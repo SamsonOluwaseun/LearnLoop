@@ -2,11 +2,11 @@
 
 **Watch and learn. A free, open-source Chrome extension for families.**
 
-Powered by Samlytics Data Services · Version 1.0 · MIT licence
+Powered by Samlytics Data Services · Version 1.1 · MIT licence
 
-[![Download LearnLoop v1.0](https://img.shields.io/badge/Download-LearnLoop%20v1.0%20for%20Chrome-4392F1?style=for-the-badge)](https://github.com/SamsonOluwaseun/LearnLoop/raw/main/download/LearnLoop-v1.0.0.zip)
+[![Download LearnLoop v1.1](https://img.shields.io/badge/Download-LearnLoop%20v1.1%20for%20Chrome-4392F1?style=for-the-badge)](https://github.com/SamsonOluwaseun/LearnLoop/raw/main/download/LearnLoop-v1.1.0.zip)
 
-**[Download LearnLoop v1.0 (zip)](https://github.com/SamsonOluwaseun/LearnLoop/raw/main/download/LearnLoop-v1.0.0.zip)**, then follow the [setup guide](#install-on-a-windows-laptop-chrome). It takes about five minutes.
+**[Download LearnLoop v1.1 (zip)](https://github.com/SamsonOluwaseun/LearnLoop/raw/main/download/LearnLoop-v1.1.0.zip)**, then follow the [setup guide](#install-on-a-windows-laptop-chrome). It takes about five minutes.
 
 ## Why I built this
 
@@ -17,7 +17,9 @@ That idea became LearnLoop. My children watch, then they learn, then they watch 
 LearnLoop is a Google Chrome extension that helps parents:
 
 - choose how much YouTube time comes before a short learning break, for example 5 minutes of video and then up to 10 minutes of learning
-- give each child Maths and English questions that follow the national curriculum in England, starting at their school year and getting harder as they succeed
+- give each child Maths and English questions that follow the national curriculum in England, from Reception to Year 6, starting at their school year and getting harder as they succeed
+- switch on Reasoning (11+ practice) for children in Years 4 to 6 who are preparing for a selective secondary school test
+- let children practise more whenever they like, including an optional "beat your own best" round that is only ever them against their own score
 - keep learning bounded and kind: children can go back early once they show they understand, wrong answers get help rather than punishment, and the session always ends on time
 - see real progress in a simple report and an optional weekly email
 - keep everything private on their own laptop, with no accounts, adverts or tracking
@@ -26,7 +28,7 @@ LearnLoop is a Google Chrome extension that helps parents:
 
 LearnLoop is open source under the MIT licence and free to use. Anyone can read the code, use it at home, and help improve it.
 
-This is version 1.0 of a new product. It works well in our home, but every family is different. If you try it, I would love to hear what worked, what didn't, and what would make it better. Please [open an issue](https://github.com/SamsonOluwaseun/LearnLoop/issues) with your ideas, questions or bug reports, or [message us on LinkedIn](https://www.linkedin.com/in/samlytics-data-service-487a7728a/). Suggestions from parents, teachers and developers are all very welcome.
+This is version 1.1 of a new product. It works well in our home, but every family is different. If you try it, I would love to hear what worked, what didn't, and what would make it better. Please [open an issue](https://github.com/SamsonOluwaseun/LearnLoop/issues) with your ideas, questions or bug reports, or [message us on LinkedIn](https://www.linkedin.com/in/samlytics-data-service-487a7728a/). Suggestions from parents, teachers and developers are all very welcome.
 
 Read [Known limitations](docs/KNOWN-LIMITATIONS.md) before you rely on it. It is a Chrome extension for Windows, and it is a family tool rather than a lock.
 
@@ -41,7 +43,9 @@ Read [Known limitations](docs/KNOWN-LIMITATIONS.md) before you rely on it. It is
   - Answers given after a clue or worked example never count as "by themselves".
   - The session ends early once the child has answered enough different questions by themselves (4 by default) and the minimum time has passed. It always ends at the maximum time.
 - Takes the child back to the same video at the same point. The video waits for the child to press play.
-- Asks questions that follow the national curriculum in England, from Reception to Year 3, in Maths and English. The starting level comes from each child's date of birth, and questions get harder as the child answers well without help (see [the curriculum map](docs/CURRICULUM.md)).
+- Asks questions that follow the national curriculum in England, from Reception to Year 6, in Maths and English. The starting level comes from each child's date of birth, and questions get harder as the child answers well without help (see [the curriculum map](docs/CURRICULUM.md)).
+- Offers **Reasoning (11+ practice)** for Years 4 to 6: verbal reasoning (codes, sequences, analogies, hidden words and more) and non-verbal reasoning (shape sequences, mirror images, turning shapes, shape grids and analogies). It is general practice, not tied to any area or exam board. Parents switch it on per child.
+- Lets children **practise more** from the LearnLoop button in the toolbar, with no video needed. Extra practice never uses or earns video time. They can choose **Beat your own best**: 10 questions, where the score is how many they answer by themselves, compared only with their own best.
 - Reads questions aloud for younger children using the voices already installed on Windows.
 - Gives parents a report with measured video time, learning time, answers by themselves and with help, and skills to practise again. It updates by itself while open, and you can export it as a CSV file.
 - Shows **Is it counting?** on the parent page and in the toolbar button, with the reason when it is not (video paused, another tab in front, laptop locked and so on).
@@ -52,7 +56,7 @@ Read [Known limitations](docs/KNOWN-LIMITATIONS.md) before you rely on it. It is
 
 You need Windows 10 or 11 and Google Chrome 116 or later.
 
-1. **[Download LearnLoop v1.0 (zip)](https://github.com/SamsonOluwaseun/LearnLoop/raw/main/download/LearnLoop-v1.0.0.zip)**. The download starts straight away.
+1. **[Download LearnLoop v1.1 (zip)](https://github.com/SamsonOluwaseun/LearnLoop/raw/main/download/LearnLoop-v1.1.0.zip)**. The download starts straight away.
 2. Right-click the zip, choose **Extract All**, and extract it to a folder that will stay put, for example `C:\Users\<you>\LearnLoop`. Chrome loads LearnLoop from this folder every time, so don't delete or move it.
 3. Open Chrome and go to `chrome://extensions`.
 4. Turn on **Developer mode** (top right).
@@ -72,6 +76,14 @@ Until steps 1 to 4 are done, the **Right now** page shows a **Finish setting up 
 
 The first time YouTube is opened after Chrome starts, it asks **Who's watching?**. Switching to a different child after that needs the parent PIN.
 
+### Switch on Reasoning (11+ practice)
+
+For a child in Years 4 to 6, open **Children and rules**, tick **Reasoning (11+ practice, Years 4 to 6)** and press **Save**. Reasoning then takes its turn with Maths and English after each video. You can set its level by hand next to the other subjects.
+
+### Extra practice and beat your own best
+
+Click the LearnLoop button in Chrome's toolbar and choose **Practise (no video needed)**. The child picks a subject. Tick **Beat your own best** for a 10-question round. You can set the longest practice session in **Children and rules** (15 minutes by default). Each child's best appears in the **Report**.
+
 ### Check the reading voice
 
 LearnLoop uses Windows' own voices, so it works offline. To check or add a British English voice, open **Settings > Time & language > Speech** and look under **Manage voices**. Then open a learning session for the younger child and press 🔊.
@@ -82,13 +94,13 @@ Once LearnLoop is installed and working, we would love to hear how it goes for y
 
 ## Levels and the curriculum
 
-Each child starts at their school year, worked out from their date of birth (England, 1 September cut-off). A child born in March 2019, for example, is in Year 3. Each skill then has three levels:
+Each child starts at their school year, worked out from their date of birth (England, 1 September cut-off). A child born in March 2019, for example, is in Year 3. Reasoning starts at Year 4 at the earliest. Each skill then has three levels:
 
 - a skill **moves up** when the child answers at least 5 of the last 6 questions on it without help, across two or more sessions
 - it **moves back** if it is a struggle, so the child is never stuck on work that is too hard
 - the **year moves up** for a subject when most of that year's skills are at the top level
 
-Answers given after a clue or a worked example never count towards moving up. A birthday on its own never makes the questions harder. You can see every level change and the reason under **Report > Why levels changed**, and you can set the Maths or English level by hand in **Children and rules**.
+Answers given after a clue or a worked example never count towards moving up. A birthday on its own never makes the questions harder. You can see every level change and the reason under **Report > Why levels changed**, and you can set the Maths, English or Reasoning level by hand in **Children and rules**.
 
 The full list of skills, the curriculum statement each one follows, and the sources are in [docs/CURRICULUM.md](docs/CURRICULUM.md).
 

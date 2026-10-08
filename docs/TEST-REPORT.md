@@ -1,20 +1,25 @@
-# Test report, version 1.0.0
+# Test report, version 1.1.0
 
-Date: 8 October 2026. Run on the build machine (Linux, Chromium with the unpacked extension). Version 1.0.0 has the same code as 0.4.0 apart from the version number. Earlier versions were used by the project owner's family on a Windows laptop with Chrome. A structured run of MANUAL-CHECKS.md on that laptop is still to be recorded.
+Date: 8 October 2026. Run on the build machine (Linux, Chromium with the unpacked extension). Earlier versions were used by the project owner's family on a Windows laptop with Chrome. A structured run of MANUAL-CHECKS.md on that laptop is still to be recorded, and version 1.1.0 has not yet been tried on it.
 
-## Unit tests: 54 of 54 pass
+## Unit tests: 72 of 72 pass
 
 `node --test tests/*.test.js`
 
-New in 0.4.0:
-- every one of the 57 skills at all 3 levels produces valid questions (600 per skill in the unit test, and 68,400 in a larger sweep during development)
-- school year from date of birth with the 1 September cut-off, and a birthday passing never changes the level
-- levels move up only after 5 of 6 independent answers over 2 sessions, never from helped answers, and move back when a skill is a struggle
-- the year moves up and back with a reason, parents can set it, and finishing a session records why levels changed
-- session plans put practise-again and week-old skills first at each skill's level, and repeated difficulty brings an easier example
-- first-sound pictures never have another name starting with the target sound, and capital-letter answers are marked exactly
+New in 1.1.0:
+- every one of the 123 skills at all 3 levels produces valid questions: exactly one right answer, no repeated options, a clue and a worked example, no missing values, and typed answers that mark correctly (450 questions per skill in the unit test, and 110,700 in a larger sweep during development)
+- turning shapes: only the answer can be made by turning the shape, and every other option is a mirror image
+- mirror images: the answer is the reflection in the mirror line and appears once
+- odd shape out: three options are turns of each other and only the answer is flipped, or only the answer breaks the sides-and-dots rule
+- shape grids: rows and columns follow their rules, and level 3 grids use each colour once per row and column
+- hidden words run across two words and are never a whole word, and no wrong option is also hidden
+- balancing sums, letter sums and letter codes are recalculated independently and match the answer
+- Reasoning stays within Years 4 to 6, older profiles gain it switched off, and learning takes turns between all subjects switched on
+- extra practice never changes the watching state, video balance or daily total
+- beat your own best counts only finished rounds, never counts helped answers, and uses time only to break a tie
+- typed numbers with commas and minus signs are understood
 
-## End-to-end: 59 of 59 checks pass
+## End-to-end: 73 of 73 checks pass
 
 `python3 tests/e2e/run_e2e.py` loads the real extension in Chromium against a local stand-in video page. The test copy of the extension exposes the current answer so the test can answer right or wrong on purpose. That hook is not in the release.
 
@@ -78,13 +83,31 @@ New in 0.4.0:
 | Fix: LearnLoop adds its script to tabs already open, so they are counted | Pass |
 | At double speed, real time is counted and the video moves on about twice as far | Pass |
 | Report explains where the video time went | Pass |
+| A child born in February 2016 starts at Year 6 in every subject, Reasoning included | Pass |
+| Reasoning can be switched on for a child | Pass |
+| Toolbar button offers practice once a child is chosen | Pass |
+| Practice offers every subject switched on for the child | Pass |
+| Beat your own best round starts in Reasoning | Pass |
+| Reasoning questions come from Year 6 | Pass |
+| Shape puzzles are drawn and visible | Pass |
+| A full round of 10 sets the first personal best | Pass |
+| Personal best stored for that child and subject only | Pass |
+| Practice did not change video time or the watching state | Pass |
+| Practice is recorded as practice the child chose | Pass |
+| Stopping a round early does not set a best | Pass |
+| Year 6 Maths questions are used for a Year 6 child | Pass |
+| Report shows Reasoning, extra practice and the own best | Pass |
 | No script errors in any page | Pass |
 
 ## Bugs found and fixed in this round
-- The parent page was replaced by an empty "Who is using this laptop?" page after setting the PIN (reported by the project owner, reproduced by the test, fixed).
-- Capitalised answers could never be marked right.
-- "trees" was treated as an -es plural and offered twice.
+- Typed answers with four or more digits (for example 13,748) were treated as unclear input. Numbers up to a million, commas and minus signs are now understood.
+- A Year 4 coordinates question could ask a point to move off the grid, which left only one option. Moves now stay on the grid.
+- An odd-shape-out question could show two identical shapes. The three matching shapes now always differ in colour.
+- A shape sequence could need a nine-sided shape that had no name in its description. Names now go up to ten sides.
+- A shape analogy could combine two turns, which made the rule unclear. It now uses at most one turn.
 
 ## Not tested yet
-- Real YouTube on the 4 GB laptop with version 0.4.0, Windows voices reading the new question types, and memory use.
+- Real YouTube on the 4 GB laptop with version 1.1.0, Windows voices reading the new question types, and memory use.
+- Whether Year 4 to 6 children find the new questions and the shape puzzles clear. That needs families with older children.
+- How the drawings look with Windows display scaling at 125% and 150%.
 - Whether the level rules feel right for real children. That needs the family pilot.

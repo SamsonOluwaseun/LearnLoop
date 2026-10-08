@@ -20,8 +20,13 @@ Please read these before relying on LearnLoop.
 - Video time uses the focused Chrome window. If a child watches on one screen while another app has focus, that time is not counted.
 
 ## Learning content
-- 57 skills from Reception to Year 3 in Maths and English, aligned to the national curriculum in England. Year 4 and above are not covered yet, so older children will find the questions easy.
-- Writing, handwriting, geometry, measures of length, mass and capacity, and statistics are not covered.
+- 123 skills: Maths and English from Reception to Year 6, aligned to the national curriculum in England, and Reasoning (11+ practice) for Years 4 to 6.
+- Writing, handwriting and drawing or measuring with a ruler or protractor are not covered. Children in Year 7 and above will find the questions easy.
+- The Reasoning track is general 11+ practice. It does not follow the format of any particular test (for example GL Assessment or CEM) or any area's schools, and it is not a prediction of a test result.
+- Each 11+ style skill has a small hand-written word bank (about 4 to 6 items per level for word puzzles), so children will meet the same word puzzles again. Number, letter and shape puzzles are generated, so they vary much more.
+- Shape puzzles are drawn in fixed colours (white, light blue and dark navy) and described in words for screen readers, but a child who cannot see the shapes cannot answer them yet.
+- **Beat your own best** shows the time taken. The score is the number answered without help, and time only breaks a tie. It is only ever compared with the same child's own best.
+- Extra practice from the toolbar button never earns video time. That is deliberate. Earned bonus time for approved learning sites (for example Numbots) is planned for a later version.
 - First sounds and word reading use pictures. They are practice, not a phonics assessment. Windows voices cannot say pure letter sounds, so LearnLoop speaks example words instead.
 - There are only a few reading passages per year so far, so children will see them again.
 - The level rules (5 of the last 6 without help across 2 sessions, and so on) are starting points for a family pilot, not proven teaching rules.
@@ -32,7 +37,6 @@ Please read these before relying on LearnLoop.
 - Reports are shown on the laptop and can be exported as CSV or as a web page.
 - The weekly report is prepared automatically, but the parent sends it through their own email app with one click. LearnLoop does not store email passwords, so it cannot send by itself yet. Fully automatic sending is planned with the Windows helper (Milestone 2).
 - If the laptop has no default email app, the **Send** button does nothing. Use **Copy text** instead.
-- Birthdays can be from 1988 onwards, but questions currently only go up to Year 2.
 - There are no active hours or exceptions for schoolwork videos yet.
 
 ## Not yet measured

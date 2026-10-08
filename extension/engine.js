@@ -39,7 +39,9 @@
   function normaliseNumber(input) {
     if (input === null || input === undefined) return null;
     const s = String(input).trim().toLowerCase().replace(/[.!?]$/, '');
-    if (/^\d{1,3}$/.test(s)) return parseInt(s, 10);
+    // Whole numbers up to a million, with or without commas, and negative numbers (a minus sign or a dash)
+    const plain = s.replace(/,(?=\d{3}(\D|$))/g, '').replace(/^[−–]/, '-');
+    if (/^-?\d{1,7}$/.test(plain)) return parseInt(plain, 10);
     const i = WORDS.indexOf(s);
     if (i >= 0) return i;
     if (s === 'for') return 4; if (s === 'to' || s === 'too') return 2; if (s === 'ate') return 8;

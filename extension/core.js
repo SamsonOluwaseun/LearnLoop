@@ -10,7 +10,8 @@
 
   function dayKey(ms) { const d = new Date(ms); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
 
-  const DEFAULT_RULES = { ent: 5, max: 10, min: 2, cap: 60, tasks: 5, mastery: 4, mode: 'playback' };
+  const DEFAULT_RULES = { ent: 5, max: 10, min: 2, cap: 60, tasks: 5, mastery: 4, mode: 'playback', practiceMax: 15 };
+  const CHALLENGE_QUESTIONS = 10;
 
   function emptyDb() {
     return { schema: SCHEMA, parent: null, children: [], activeChildId: null, runtime: {}, revision: {}, skills: {},
@@ -19,7 +20,7 @@
   }
 
   const CUR = () => root.LLCurriculum || require('./curriculum.js');
-  const YEARS = ['R', 'Y1', 'Y2', 'Y3'];
+  const YEARS = ['R', 'Y1', 'Y2', 'Y3', 'Y4', 'Y5', 'Y6'];
   // The starting year comes from the date of birth (school year in England). After that only results move it.
   function startYearFrom(birthday, today, ageBand) {
     if (birthday) return CUR().schoolYearFor(birthday, today).start;
@@ -27,10 +28,18 @@
     if (ageBand === 'primary') return 'Y2';
     return YEARS.includes(ageBand) ? ageBand : 'Y1';
   }
-  function newChild({ id, name, birthday = null, ageBand = null, subjects = { maths: true, english: true }, today }) {
+  // Reasoning (the 11+ style track) runs from Year 4 to Year 6. Maths and English run from Reception to Year 6.
+  const SUBJECTS = ['maths', 'english', 'reasoning'];
+  const REASONING_YEARS = ['Y4', 'Y5', 'Y6'];
+  const yearsFor = (subject) => subject === 'reasoning' ? REASONING_YEARS : YEARS;
+  const clampYear = (subject, year) => { const ys = yearsFor(subject); if (ys.includes(year)) return year; return YEARS.indexOf(year) < YEARS.indexOf(ys[0]) ? ys[0] : ys[ys.length - 1]; };
+  const subjectLabel = (subject) => CUR().SUBJECT_LABEL[subject] || subject;
+  function newChild({ id, name, birthday = null, ageBand = null, subjects = { maths: true, english: true, reasoning: false }, today }) {
     const start = startYearFrom(birthday, today, ageBand);
+    subjects = Object.assign({ maths: false, english: false, reasoning: false }, subjects);
+    const years = { maths: start, english: start, reasoning: clampYear('reasoning', start) };
     return { id, name: String(name).slice(0, 30), birthday, band: start === 'R' ? 'early' : 'primary', subjects,
-      startYear: { maths: start, english: start }, stage: { maths: start, english: start },
+      startYear: Object.assign({}, years), stage: Object.assign({}, years),
       readAloud: start === 'R' || start === 'Y1', typing: start !== 'R', rules: Object.assign({}, DEFAULT_RULES) };
   }
   // Profiles made before version 0.4 had only a band. Give them a starting year once.
@@ -39,6 +48,13 @@
       const start = startYearFrom(child.birthday, today, child.band);
       child.startYear = { maths: start, english: start }; child.stage = { maths: start, english: start };
     }
+    // Profiles made before version 1.1 had no Reasoning. Add it switched off, starting no lower than Year 4.
+    if (!child.stage.reasoning) {
+      const base = child.startYear && child.startYear.maths ? child.startYear.maths : child.stage.maths;
+      child.startYear = Object.assign({}, child.startYear, { reasoning: clampYear('reasoning', base) });
+      child.stage.reasoning = clampYear('reasoning', base);
+    }
+    child.subjects = Object.assign({ maths: false, english: false, reasoning: false }, child.subjects);
     return child;
   }
 
@@ -81,16 +97,16 @@
     }
     // Year being worked on: move up when most of this year's skills are at the top level, back when most are a struggle
     ensureChildModel(child, dayKey(nowMs));
-    const year = child.stage[subject]; const skills = C.skillsIn(subject, year); const yi = YEARS.indexOf(year);
+    const year = child.stage[subject]; const skills = C.skillsIn(subject, year); const YS = yearsFor(subject); const yi = YS.indexOf(year);
     const top = skills.filter(k => (db.skills[child.id] || {})[k] && db.skills[child.id][k].level === C.MAX_LEVEL).length;
     const struggling = skills.filter(k => { const r = (db.skills[child.id] || {})[k]; if (!r || r.level !== 1 || !r.recent || r.recent.length < WINDOW) return false;
       const last = r.recent.slice(-WINDOW); return last.reduce((t, x) => t + x.ok, 0) <= DOWN_MAX && new Set(last.map(x => x.s)).size >= 2; }).length;
-    if (skills.length && top / skills.length >= STAGE_UP_SHARE && yi < YEARS.length - 1) {
-      child.stage[subject] = YEARS[yi + 1];
-      changes.push({ at: nowMs, kind: 'year', subject, from: year, to: child.stage[subject], reason: `Started ${C.YEAR_LABEL[child.stage[subject]]} ${subject === 'maths' ? 'Maths' : 'English'}: ${top} of ${skills.length} ${C.YEAR_LABEL[year]} skills reached the top level.` });
+    if (skills.length && top / skills.length >= STAGE_UP_SHARE && yi >= 0 && yi < YS.length - 1) {
+      child.stage[subject] = YS[yi + 1];
+      changes.push({ at: nowMs, kind: 'year', subject, from: year, to: child.stage[subject], reason: `Started ${C.YEAR_LABEL[child.stage[subject]]} ${subjectLabel(subject)}: ${top} of ${skills.length} ${C.YEAR_LABEL[year]} skills reached the top level.` });
     } else if (skills.length && struggling / skills.length >= STAGE_DOWN_SHARE && yi > 0) {
-      child.stage[subject] = YEARS[yi - 1];
-      changes.push({ at: nowMs, kind: 'year', subject, from: year, to: child.stage[subject], reason: `Went back to ${C.YEAR_LABEL[child.stage[subject]]} ${subject === 'maths' ? 'Maths' : 'English'} for now: ${struggling} of ${skills.length} ${C.YEAR_LABEL[year]} skills were hard across several sessions.` });
+      child.stage[subject] = YS[yi - 1];
+      changes.push({ at: nowMs, kind: 'year', subject, from: year, to: child.stage[subject], reason: `Went back to ${C.YEAR_LABEL[child.stage[subject]]} ${subjectLabel(subject)} for now: ${struggling} of ${skills.length} ${C.YEAR_LABEL[year]} skills were hard across several sessions.` });
     }
     for (const c of changes) logChange(db, child.id, c);
     return changes;
@@ -110,9 +126,9 @@
     return list.map(skill => ({ skill, level: (sk[skill] && sk[skill].level) || 1 }));
   }
   function setStage(db, child, subject, year, nowMs) {
-    ensureChildModel(child, dayKey(nowMs)); if (!YEARS.includes(year) || child.stage[subject] === year) return;
+    ensureChildModel(child, dayKey(nowMs)); if (!yearsFor(subject).includes(year) || child.stage[subject] === year) return;
     const from = child.stage[subject]; child.stage[subject] = year;
-    logChange(db, child.id, { at: nowMs, kind: 'year', subject, from, to: year, reason: `A parent set ${subject === 'maths' ? 'Maths' : 'English'} to ${CUR().YEAR_LABEL[year]}.` });
+    logChange(db, child.id, { at: nowMs, kind: 'year', subject, from, to: year, reason: `A parent set ${subjectLabel(subject)} to ${CUR().YEAR_LABEL[year]}.` });
   }
 
   function runtimeFor(db, childId, nowMs) {
@@ -178,7 +194,7 @@
   }
 
   function pickSubject(child, r) {
-    const on = ['maths', 'english'].filter(s => child.subjects[s]);
+    const on = SUBJECTS.filter(s => child.subjects && child.subjects[s]);
     if (!on.length) return 'maths';
     const s = on.includes(r.nextSubject) ? r.nextSubject : on[0];
     r.nextSubject = on[(on.indexOf(s) + 1) % on.length];
@@ -211,7 +227,7 @@
       learningSec: summary.learningSec, ind: summary.independentCorrect, sup: summary.supportedCorrect, incorrect: summary.incorrect,
       revisit: summary.revisit.slice(), skills: summary.skillsPractised.slice() });
     if (db.sessions.length > MAX_SESSIONS) db.sessions.splice(0, db.sessions.length - MAX_SESSIONS);
-    db.revision[childId] = db.revision[childId] || { maths: [], english: [] };
+    db.revision[childId] = db.revision[childId] || { maths: [], english: [], reasoning: [] };
     db.revision[childId][subject] = summary.revisit.slice();
     for (const a of summary.attempts || []) {
       const s = skillRec(db, childId, a.skill);
@@ -295,6 +311,7 @@
       duringSwitchSec: Math.round(sum('duringSwitchSec')), contentSec: Math.round(sum('contentSec')),
       backgroundSec: Math.round(sum('backgroundSec')), pipSec: Math.round(sum('pipSec')), lockedSec: Math.round(sum('lockedSec')), unfocusedSec: Math.round(sum('unfocusedSec')),
       learningSec: t('learningSec'), learningMin: Math.round(t('learningSec') / 60), sessions: sessions.length,
+      practiceSec: sessions.filter(s => s.practice).reduce((a, s) => a + (s.learningSec || 0), 0), practiceMin: Math.round(sessions.filter(s => s.practice).reduce((a, s) => a + (s.learningSec || 0), 0) / 60),
       independent: ind, supported: sup, incorrect: inc,
       independentAccuracy: ind + sup + inc ? Math.round(100 * ind / (ind + sup + inc)) : null,
       revisit: [...new Set(sessions.slice(-4).flatMap(s => s.revisit))],
@@ -339,6 +356,37 @@
     return 'counted';
   }
 
+  // ---------- practice chosen by the child (no video needed, earns no video time) ----------
+  // Practice never changes the watching state, the video balance or the daily limit. Answers still count as evidence for levels,
+  // because they are real answers. A "beat your own best" round is 10 questions, compared only with the child's own best.
+  function betterThan(a, b) { return !b || a.score > b.score || (a.score === b.score && a.sec < b.sec); }
+  function recordPractice(db, childId, p, nowMs) {
+    const child = db.children.find(c => c.id === childId);
+    if (!child || !SUBJECTS.includes(p.subject) || !child.subjects[p.subject]) return null;
+    const attempts = (p.attempts || []).filter(a => CUR().SKILLS[a.skill] && CUR().SKILLS[a.skill].subject === p.subject).slice(0, 200);
+    const sec = Math.max(0, Math.min(Math.round(+p.learningSec || 0), ((child.rules.practiceMax || DEFAULT_RULES.practiceMax) * 60) + 30));
+    const ind = attempts.filter(a => a.correct && a.support === 'none').length, sup = attempts.filter(a => a.correct && a.support !== 'none').length;
+    const revisit = [...new Set((p.revisit || []).filter(k => CUR().SKILLS[k]))];
+    db.sessions.push({ childId, subject: p.subject, startedAt: nowMs - sec * 1000, endedAt: nowMs, reason: p.challenge ? 'challenge' : 'practice', practice: true,
+      learningSec: sec, ind, sup, incorrect: attempts.filter(a => !a.correct).length, revisit, skills: [...new Set(attempts.map(a => a.skill))] });
+    if (db.sessions.length > MAX_SESSIONS) db.sessions.splice(0, db.sessions.length - MAX_SESSIONS);
+    for (const a of attempts) { const s = skillRec(db, childId, a.skill); s.attempts++; s.last = nowMs; if (!a.correct) s.incorrect++; else if (a.support === 'none') s.independent++; else s.supported++; }
+    db.revision[childId] = db.revision[childId] || { maths: [], english: [], reasoning: [] };
+    db.revision[childId][p.subject] = [...new Set([...(db.revision[childId][p.subject] || []), ...revisit])].slice(-8);
+    const changes = updateProgress(db, child, p.subject, attempts, 'practice:' + nowMs, nowMs);
+    db.sessions[db.sessions.length - 1].changes = changes.map(c => c.reason);
+    let out = { changes: changes.map(c => c.reason) };
+    if (p.challenge && attempts.length) {
+      // the score is the questions answered by themselves in the round, so a guessed or helped answer never inflates it
+      const round = { score: Math.min(ind, CHALLENGE_QUESTIONS), of: CHALLENGE_QUESTIONS, sec, at: nowMs, year: child.stage[p.subject] };
+      db.best = db.best || {}; const b = db.best[childId] = db.best[childId] || {};
+      const prev = b[p.subject] || null; const isBest = !!p.complete && betterThan(round, prev); // only a finished round of 10 can set a best
+      if (isBest) b[p.subject] = round;
+      out = Object.assign(out, { round, prev, best: isBest });
+    }
+    return out;
+  }
+
   // ---------- weekly report ----------
   const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   function validEmail(e) { return /^[^\s@<>(),;:"]+@[^\s@<>(),;:"]+\.[^\s@<>(),;:"]{2,}$/.test(String(e || '').trim()) && String(e).length <= 254; }
@@ -362,11 +410,11 @@
       const trend = now.learningMin > prev.learningMin ? `up from ${prev.learningMin} min the week before` : now.learningMin < prev.learningMin ? `down from ${prev.learningMin} min the week before` : 'same as the week before';
       lines.push(child.name);
       lines.push(`- Measured video: ${now.watchedMin} min (not counted: ${now.backgroundMin + now.pipMin + now.lockedMin} min in background, picture in picture or locked)`);
-      lines.push(`- Active learning: ${now.learningMin} min in ${now.sessions} session${now.sessions === 1 ? '' : 's'}, ${trend}`);
+      lines.push(`- Active learning: ${now.learningMin} min in ${now.sessions} session${now.sessions === 1 ? '' : 's'}, ${trend}${now.practiceMin ? ` (including ${now.practiceMin} min of practice they chose themselves)` : ''}`);
       lines.push(`- Answers by themselves: ${now.independent}. With help: ${now.supported}. Not yet: ${now.incorrect}`);
       if (now.skillsPractised.length) lines.push(`- Skills practised: ${now.skillsPractised.map(label).join(', ')}`);
       lines.push(`- Practise again: ${now.revisit.length ? now.revisit.map(label).join(', ') : 'nothing flagged'}`);
-      if (child.stage) lines.push(`- Working at: Maths ${CUR().YEAR_LABEL[child.stage.maths]}, English ${CUR().YEAR_LABEL[child.stage.english]}`);
+      if (child.stage) lines.push(`- Working at: ${SUBJECTS.filter(sj => child.subjects && child.subjects[sj] && child.stage[sj]).map(sj => `${subjectLabel(sj)} ${CUR().YEAR_LABEL[child.stage[sj]]}`).join(', ')}`);
       const moved = ((db.levelLog || {})[child.id] || []).filter(x => x.at >= period.fromMs && x.at < period.toMs);
       for (const x of moved.slice(-5)) lines.push(`- ${x.reason}`);
       lines.push(`- Parent overrides: ${now.overrides}. Monitoring gaps: ${now.gaps}`);
@@ -391,7 +439,7 @@
   function markSent(db, key, nowMs) { const o = (db.outbox || []).find(x => x.key === key); if (o) { o.status = 'sent'; o.sentAt = nowMs; } return !!o; }
 
   const api = { SCHEMA, DEFAULT_RULES, dayKey, emptyDb, newChild, runtimeFor, applyHeartbeat, beginLearning, saveProgress, finishLearning,
-    parentOverride, recover, hashSecret, newChildModel: ensureChildModel, ensureChildModel, startYearFrom, updateProgress, planSession, setStage, YEARS, setParentPin, checkPin, checkRecovery, validPin, report, csv, MAX_HEARTBEAT_SEC,
+    parentOverride, recover, hashSecret, newChildModel: ensureChildModel, ensureChildModel, startYearFrom, updateProgress, planSession, setStage, recordPractice, betterThan, CHALLENGE_QUESTIONS, YEARS, SUBJECTS, REASONING_YEARS, yearsFor, setParentPin, checkPin, checkRecovery, validPin, report, csv, MAX_HEARTBEAT_SEC,
     REASONS, beatReason, DAY_NAMES, validEmail, weekPeriod, weeklyData, weeklyText, queueWeekly, markSent };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.LLCore = api;
 })(typeof window !== 'undefined' ? window : globalThis);

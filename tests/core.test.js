@@ -264,20 +264,22 @@ test('school year from date of birth uses the 1 September cut-off', () => {
   assert.equal(CUR.schoolYearFor('2019-09-01', '2026-10-08').label, 'Year 2');
   assert.equal(CUR.schoolYearFor('2022-06-02', '2026-10-08').label, 'Reception');
   assert.equal(CUR.schoolYearFor('2023-01-10', '2026-10-08').start, 'R'); // not at school yet: starts at Reception content
-  assert.equal(CUR.schoolYearFor('1988-05-01', '2026-10-08').start, 'Y3'); // older than the content: top year available
+  assert.equal(CUR.schoolYearFor('1988-05-01', '2026-10-08').start, 'Y6'); // older than the content: top year available
+  assert.equal(CUR.schoolYearFor('2015-10-01', '2026-10-08').label, 'Year 6');
 });
 
 test('new profiles start at their school year; the younger child reads aloud with no typing', () => {
   const db = setup();
-  assert.deepEqual(db.children[0].stage, { maths: 'Y3', english: 'Y3' });
-  assert.deepEqual(db.children[1].stage, { maths: 'R', english: 'R' });
+  assert.deepEqual(db.children[0].stage, { maths: 'Y3', english: 'Y3', reasoning: 'Y4' });
+  assert.deepEqual(db.children[1].stage, { maths: 'R', english: 'R', reasoning: 'Y4' }); // Reasoning starts at Year 4 and is off until a parent turns it on
+  assert.equal(db.children[0].subjects.reasoning, false);
   assert.equal(db.children[1].readAloud, true); assert.equal(db.children[1].typing, false);
 });
 
 test('a birthday passing never makes the work harder on its own', () => {
   const db = setup(); const joy = db.children[0];
   C.ensureChildModel(joy, '2027-09-30'); // a year later, after the birthday and a new school year
-  assert.deepEqual(joy.stage, { maths: 'Y3', english: 'Y3' });
+  assert.deepEqual(joy.stage, { maths: 'Y3', english: 'Y3', reasoning: 'Y4' });
 });
 
 const ok = (skill, n, correct = true, support = 'none') => Array.from({ length: n }, () => ({ skill, correct, support }));
@@ -356,4 +358,60 @@ test('finishing a session updates levels and records why', () => {
   }
   assert.equal(db.skills.joy['times-3-4-8'].level, 2);
   assert.ok(db.sessions[1].changes[0].includes('moved up to level 2'));
+});
+
+// ---- version 1.1: Years 4 to 6 and Reasoning ----
+test('profiles from before 1.1 gain Reasoning switched off, starting at Year 4 or their own year', () => {
+  const old = { id: 'o', name: 'Old', birthday: '2019-03-14', subjects: { maths: true, english: true }, startYear: { maths: 'Y3', english: 'Y3' }, stage: { maths: 'Y3', english: 'Y3' } };
+  C.ensureChildModel(old, '2026-10-08');
+  assert.equal(old.stage.reasoning, 'Y4'); assert.equal(old.subjects.reasoning, false);
+  const y5 = C.newChild({ id: 'b', name: 'B', birthday: '2017-01-10', subjects: { maths: true, english: true, reasoning: true }, today: '2026-10-08' });
+  assert.deepEqual(y5.stage, { maths: 'Y5', english: 'Y5', reasoning: 'Y5' });
+});
+
+test('Reasoning stays within Years 4 to 6 and plans Reasoning skills only', () => {
+  const db = setup(); const joy = db.children[0]; joy.subjects.reasoning = true;
+  C.setStage(db, joy, 'reasoning', 'Y3', T0); assert.equal(joy.stage.reasoning, 'Y4'); // not a Reasoning year
+  C.setStage(db, joy, 'reasoning', 'Y6', T0); assert.equal(joy.stage.reasoning, 'Y6');
+  const plan = C.planSession(db, joy, 'reasoning', T0);
+  assert.ok(plan.length >= 4 && plan.every(p => CUR.SKILLS[p.skill].subject === 'reasoning' && CUR.SKILLS[p.skill].year === 'Y6'));
+  // Top of the range: every Year 6 Reasoning skill at the top level does not move past Year 6
+  for (const k of CUR.skillsIn('reasoning', 'Y6')) { db.skills.joy = db.skills.joy || {}; db.skills.joy[k] = { attempts: 9, independent: 9, supported: 0, incorrect: 0, last: T0, level: 3, recent: [] }; }
+  C.updateProgress(db, joy, 'reasoning', [], 's1', T0); assert.equal(joy.stage.reasoning, 'Y6');
+  assert.match(db.levelLog.joy.at(-1).reason, /A parent set Reasoning \(11\+\) to Year 6/);
+});
+
+test('learning takes turns between every subject that is switched on', () => {
+  const db = setup({ ent: 1 }); const joy = db.children[0]; joy.subjects.reasoning = true;
+  const seen = [];
+  for (let i = 0; i < 3; i++) {
+    const r = C.runtimeFor(db, 'joy', T0 + i * 1e6); r.state = 'entertainment'; r.balanceUsed = 0;
+    C.applyHeartbeat(db, { candidateSec: 61, fromActiveTab: true, playing: true }, { idleState: 'active', nowMs: T0 + i * 1e6 + 61000 });
+    seen.push(C.runtimeFor(db, 'joy', T0 + i * 1e6 + 61000).subject);
+  }
+  assert.deepEqual(seen.slice().sort(), ['english', 'maths', 'reasoning']);
+});
+
+test('extra practice never changes the watching state, video balance or daily total', () => {
+  const db = setup(); const r = C.runtimeFor(db, 'joy', T0); r.balanceUsed = 120; r.dayWatched = 600;
+  const before = JSON.stringify(db.runtime.joy);
+  const out = C.recordPractice(db, 'joy', { subject: 'maths', learningSec: 300, attempts: ok('times-3-4-8', 3), revisit: [] }, T0 + 1000);
+  assert.ok(out); assert.equal(JSON.stringify(db.runtime.joy), before);
+  const s = db.sessions.at(-1); assert.equal(s.reason, 'practice'); assert.equal(s.practice, true); assert.equal(s.ind, 3);
+  assert.equal(C.report(db, 'joy', T0, T0 + 5000).practiceMin, 5);
+  assert.equal(C.recordPractice(db, 'joy', { subject: 'reasoning', attempts: [] }, T0), null, 'a subject that is switched off is refused');
+});
+
+test('beat your own best: only finished rounds count, more answers by themselves wins, then the quicker time', () => {
+  const db = setup(); const round = (n, sec, complete = true) => C.recordPractice(db, 'joy', { subject: 'maths', challenge: true, complete, learningSec: sec,
+    attempts: [...ok('times-3-4-8', n), ...ok('times-3-4-8', 10 - n, false)], revisit: [] }, T0 + sec);
+  assert.equal(round(6, 300).best, true);                  // first best
+  assert.equal(round(9, 400, false).best, false);         // stopped early: not a round
+  assert.equal(round(5, 100).best, false);                 // fewer by themselves, even if quicker
+  const r = round(6, 250); assert.equal(r.best, true); assert.equal(r.prev.score, 6);   // same score, quicker
+  assert.equal(round(7, 900).best, true);                  // more by themselves beats any time
+  assert.deepEqual([db.best.joy.maths.score, db.best.joy.maths.sec], [7, 900]);
+  // answers with help never raise the score
+  const helped = C.recordPractice(db, 'joy', { subject: 'maths', challenge: true, complete: true, learningSec: 60, attempts: ok('times-3-4-8', 10, true, 'hint'), revisit: [] }, T0);
+  assert.equal(helped.round.score, 0); assert.equal(helped.best, false);
 });

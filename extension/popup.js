@@ -20,4 +20,7 @@
     else d.textContent = 'No signal from YouTube right now. If a YouTube tab is playing, reload it once (F5).';
   }
   document.getElementById('open').onclick = () => chrome.runtime.openOptionsPage();
+  // Practice is for the child who is using LearnLoop now. It never adds or uses video time.
+  const p = document.getElementById('practise');
+  if (st.configured && st.child) { p.hidden = false; p.onclick = () => { chrome.tabs.create({ url: chrome.runtime.getURL('learn.html?practice=1') }); window.close(); }; }
 })();

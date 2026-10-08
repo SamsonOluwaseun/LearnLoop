@@ -12,9 +12,10 @@
  */
 (function (root) {
   'use strict';
-  const CONTENT_VERSION = '0.4.0';
-  const YEARS = ['R', 'Y1', 'Y2', 'Y3'];
-  const YEAR_LABEL = { R: 'Reception', Y1: 'Year 1', Y2: 'Year 2', Y3: 'Year 3' };
+  const CONTENT_VERSION = '1.1.0';
+  const YEARS = ['R', 'Y1', 'Y2', 'Y3', 'Y4', 'Y5', 'Y6'];
+  const YEAR_LABEL = { R: 'Reception', Y1: 'Year 1', Y2: 'Year 2', Y3: 'Year 3', Y4: 'Year 4', Y5: 'Year 5', Y6: 'Year 6' };
+  const SUBJECT_LABEL = { maths: 'Maths', english: 'English', reasoning: 'Reasoning (11+)' };
 
   // ---------- helpers ----------
   const pick = (r, a) => a[Math.floor(r() * a.length)];
@@ -755,6 +756,12 @@
     return { index: n, label: n < 0 ? 'Not yet in Reception' : n === 0 ? 'Reception' : `Year ${n}`, start: YEARS[Math.max(0, Math.min(YEARS.length - 1, n))] };
   }
 
-  const api = { CONTENT_VERSION, YEARS, YEAR_LABEL, SKILLS, MAX_LEVEL, skillsIn, schoolYearFor, PIC, namesOf, INITIAL, startsWithSound, CEW1, CEW2, W34, HOMO2, HOMO3, PASSAGES };
-  if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.LLCurriculum = api;
+  // Extra packs (Years 4 to 6, Reasoning) add their skills through install(). Each skill says its own subject.
+  function install(pack) { for (const [id, s] of Object.entries(pack)) { if (SKILLS[id]) throw new Error('Duplicate skill ' + id); SKILLS[id] = s; } }
+  const helpers = { pick, int, shuffle, numChoices, strChoices, pence, WORDS, timeLabel, ROMAN };
+  const api = { CONTENT_VERSION, YEARS, YEAR_LABEL, SUBJECT_LABEL, SKILLS, MAX_LEVEL, skillsIn, schoolYearFor, PIC, namesOf, INITIAL, startsWithSound, CEW1, CEW2, W34, HOMO2, HOMO3, PASSAGES, install, helpers };
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = api;
+    require('./curriculum-ks2.js')(api); require('./reasoning.js')(api);
+  } else root.LLCurriculum = api;
 })(typeof window !== 'undefined' ? window : globalThis);

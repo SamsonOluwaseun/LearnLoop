@@ -29,6 +29,11 @@ Before you start, set the rule to 1 minute of video and 1 to 2 minutes of learni
 | 21 | Weekly email: save your address, press "Send this to my email now" | Email app opens with the report, you can send it | |
 | 22 | Set the report day to today, wait a minute | Windows notification appears, clicking it opens the report | |
 | 23 | Birthday drop-downs: years 1988 to this year, 31 February refused | As described | |
+| 24 | Child in Years 4 to 6: tick Reasoning, save, watch until learning | Reasoning takes its turn with Maths and English | |
+| 25 | Shape puzzles at 100%, 125% and 150% display scaling | Shapes and letters A to D are clear and easy to tap | |
+| 26 | Toolbar button > Practise > Beat your own best, answer all 10 | "Your first best!" appears, and the best shows in the Report | |
+| 27 | During and after extra practice, check Right now | Video time and the daily total have not changed | |
+| 28 | Type a large answer such as 4,320 | Marked right with or without the comma | |
 
 ## Measuring memory on the 4 GB laptop
 

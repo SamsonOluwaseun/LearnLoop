@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.1.0 (8 October 2026)
+
+Added
+- **Years 4, 5 and 6** in Maths and English, so LearnLoop now covers the whole of primary school: 123 skills in total. New topics include rounding, four-digit sums, times tables to 12 × 12, fractions, decimals and percentages, negative numbers, factors and primes, long division, ratio, algebra, area and volume, angles, coordinates, bar charts, Roman numerals, the Years 5 and 6 spelling list, apostrophes, fronted adverbials, relative clauses, modal verbs, the passive voice, formal language and the subjunctive, semicolons and colons, and new reading passages. Year 6 maths and grammar items follow the style of the key stage 2 tests (published under the Open Government Licence). All questions are original.
+- **Reasoning (11+ practice)**, a third subject for Years 4 to 6 that parents switch on per child. Verbal reasoning: letter and number sequences, letter codes, analogies, odd one out, closest and opposite meanings, compound words, hidden words, balancing sums and letters for numbers. Non-verbal reasoning: shape sequences, odd shape out, mirror images, turning shapes, shape grids and shape analogies, all drawn by code.
+- **Extra practice** from the toolbar button. The child picks a subject and practises with no video needed. It never uses or earns video time.
+- **Beat your own best**, an optional 10-question round. The score is the number answered without help, compared only with the child's own best. Parents see the best in the report.
+- Drawings for questions: rectangles, angles, coordinate grids, bar charts, cuboids and triangles.
+- Parent setting for the longest extra practice session (15 minutes by default).
+
+Changed
+- Typed answers accept numbers up to a million, with or without commas, and negative numbers.
+- The birthday note now says LearnLoop goes up to Year 6.
+
+Upgrading keeps every profile, setting and result. Reasoning starts switched off.
+
 ## 1.0.0 (8 October 2026)
 
 First public, open-source release. Same features as 0.4.0, plus a one-click download link in the README and an invitation to share your experience on LinkedIn once setup is complete. Earlier versions were used by our family on Windows with Chrome.

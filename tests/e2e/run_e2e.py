@@ -22,9 +22,9 @@ def test_build():
     bg = bg.replace("const SITE_PATTERNS = ['*://*.youtube.com/*'];", "const SITE_PATTERNS = ['*://*.youtube.com/*', 'http://localhost/*', 'http://127.0.0.1/*'];")
     (d / 'background.js').write_text(bg)
     lj = (d / 'learn.js').read_text()
-    anchor = "  onBreak = runtime.state === 'break';"
+    anchor = "  if (PRACTICE) { await startPractice(); return; }"
     assert anchor in lj
-    (d / 'learn.js').write_text(lj.replace(anchor, anchor + "\n  window.__llAnswer = () => (session && session.current) ? String(session.current.answer) : null; // TEST BUILD ONLY"))
+    (d / 'learn.js').write_text(lj.replace(anchor, "  window.__llAnswer = () => (session && session.current) ? String(session.current.answer) : null; // TEST BUILD ONLY\n" + anchor))
     return d
 
 WORDS = ['zero','one','two','three','four','five','six','seven','eight','nine','ten','eleven','twelve','thirteen','fourteen','fifteen','sixteen','seventeen','eighteen','nineteen','twenty']
@@ -78,7 +78,7 @@ async def main():
             await pick_birthday(0, '14', '3', '2019'); await asyncio.sleep(0.2)
             note = await opt.inner_text('.kidform')
             stages = await opt.evaluate("[...document.querySelectorAll('[data-i=\"0\"][data-stage]')].map(s => s.value)")
-            check('Date of birth sets the school year and starting level (Year 3 for March 2019)', 'Age 7, Year 3' in note and stages == ['Y3', 'Y3'], note[note.find('Age'):note.find('Age') + 60] + ' ' + json.dumps(stages))
+            check('Date of birth sets the school year and starting level (Year 3 for March 2019)', 'Age 7, Year 3' in note and stages == ['Y3', 'Y3', 'Y4'], note[note.find('Age'):note.find('Age') + 60] + ' ' + json.dumps(stages))
             for k, v in (('ent', '1'), ('max', '2'), ('min', '0')):
                 await opt.fill(f'[data-i="0"][data-r="{k}"]', v); await opt.locator(f'[data-i="0"][data-r="{k}"]').dispatch_event('change')
             await opt.click('#add')
@@ -88,7 +88,7 @@ async def main():
                 await opt.fill(f'[data-i="1"][data-r="{k}"]', v); await opt.locator(f'[data-i="1"][data-r="{k}"]').dispatch_event('change')
             await opt.click('#save'); await opt.wait_for_selector('#who', timeout=10000)
             d = await db()
-            check('Birthdays saved with starting levels: Joy Year 3, Sam Reception', d['children'][0]['birthday'] == '2019-03-14' and d['children'][0]['stage'] == {'maths': 'Y3', 'english': 'Y3'} and d['children'][1]['stage'] == {'maths': 'R', 'english': 'R'} and '_bd' not in d['children'][0], json.dumps([c.get('stage') for c in d['children']]))
+            check('Birthdays saved with starting levels: Joy Year 3, Sam Reception', d['children'][0]['birthday'] == '2019-03-14' and d['children'][0]['stage'] == {'maths': 'Y3', 'english': 'Y3', 'reasoning': 'Y4'} and d['children'][1]['stage'] == {'maths': 'R', 'english': 'R', 'reasoning': 'Y4'} and d['children'][0]['subjects']['reasoning'] is False and '_bd' not in d['children'][0], json.dumps([c.get('stage') for c in d['children']]))
             steps = await opt.inner_text('#main')
             check('Right now shows the setup steps with what to do next', 'Finish setting up LearnLoop' in steps and 'Parent PIN saved' in steps and "Open YouTube and choose who's watching" in steps, steps[:200])
             brand = await opt.evaluate("(() => { const i = document.querySelector('.brand img.mark'); return { img: !!i && i.complete && i.naturalWidth > 0, text: document.querySelector('.brand').innerText, font: document.fonts.check('800 24px Montserrat'), bg: getComputedStyle(document.body).backgroundColor }; })()")
@@ -286,6 +286,71 @@ async def main():
             bd = await opt.inner_text('#main')
             check('Report explains where the video time went', 'How far the videos moved on' in bd and 'Counted as watching' in bd, bd[bd.find('Where today'):bd.find('Where today') + 200])
             await opt.screenshot(path=str(ROOT / 'docs' / 'img' / 'report.png'), full_page=True)
+
+            # ---- version 1.1: a Year 6 child with Reasoning, extra practice and beat your own best ----
+            await opt.click('#tabs button[data-v="kids"]'); await opt.wait_for_selector('.kidform'); await opt.click('#add'); await asyncio.sleep(0.3)
+            await opt.fill('[data-i="2"][data-k="name"]', 'Ada'); await opt.locator('[data-i="2"][data-k="name"]').dispatch_event('change')
+            await pick_birthday(2, '1', '2', '2016'); await asyncio.sleep(0.3)
+            note = await opt.inner_text('.kidform:nth-of-type(3)') if await opt.query_selector('.kidform:nth-of-type(3)') else await opt.inner_text('#main')
+            stages = await opt.evaluate("[...document.querySelectorAll('[data-i=\"2\"][data-stage]')].map(s => s.value)")
+            check('A child born in February 2016 starts at Year 6 in every subject, Reasoning included', stages == ['Y6', 'Y6', 'Y6'] and 'Year 3' not in note.split('Age 10')[-1][:80], json.dumps(stages))
+            await opt.check('[data-i="2"][data-s="reasoning"]'); await asyncio.sleep(0.2)
+            await opt.click('#save'); await asyncio.sleep(1)
+            d = await db(); ada = d['children'][2]
+            check('Reasoning can be switched on for a child', ada['subjects']['reasoning'] is True and ada['rules'].get('practiceMax') == 15, json.dumps(ada['subjects']))
+            await opt.click('#tabs button[data-v="now"]'); await opt.wait_for_selector('#who', timeout=10000)
+            await opt.click('#who button[data-k]:nth-child(3)'); await asyncio.sleep(1)
+            d = await db(); before_rt = json.dumps(d['runtime'].get('c' if False else d['activeChildId'], {}), sort_keys=True)
+            pop = await ctx.new_page(); await pop.goto(f'chrome-extension://{ext_id}/popup.html'); await asyncio.sleep(1)
+            check('Toolbar button offers practice once a child is chosen', await pop.is_visible('#practise'), await pop.inner_text('body'))
+            await pop.close()
+            pr = await ctx.new_page(); pr.on('pageerror', lambda e: errors.append('practice: ' + str(e)))
+            await pr.goto(f'chrome-extension://{ext_id}/learn.html?practice=1'); await pr.wait_for_selector('[data-sub]')
+            subs = await pr.evaluate("[...document.querySelectorAll('[data-sub]')].map(b => b.dataset.sub)")
+            check('Practice offers every subject switched on for the child', subs == ['maths', 'english', 'reasoning'], json.dumps(subs))
+            await pr.check('#challenge'); await pr.click('[data-sub="reasoning"]'); await pr.wait_for_selector('.prompt')
+            head = await pr.inner_text('.lhead h2')
+            check('Beat your own best round starts in Reasoning', 'Reasoning: beat your best with Ada' in head, head)
+            seen_svg, shot, notes = 0, False, set()
+            for i in range(10):
+                await pr.wait_for_selector('.prompt'); await asyncio.sleep(0.3)
+                notes.add((await pr.inner_text('.lbody .note')).split(' · ')[0])
+                info = await pr.evaluate("(() => { const s = [...document.querySelectorAll('.choice svg, .svgbox svg')]; return { n: s.length, ok: s.every(x => { const b = x.getBoundingClientRect(); return b.width > 20 && b.height > 20; }) }; })()")
+                if info['n']:
+                    seen_svg += 1
+                    if not info['ok']: errors.append('an SVG drawing has no size')
+                    if not shot and await pr.query_selector('.choice.svgc'):
+                        await pr.screenshot(path=str(ROOT / 'docs' / 'img' / 'reasoning.png')); shot = True
+                right = await current_answer(pr); await click_choice(pr, right); await asyncio.sleep(1.6)
+            await pr.wait_for_selector('.over .card', timeout=10000); endtxt = await pr.inner_text('.card')
+            check('Reasoning questions come from Year 6', notes == {'Year 6'}, json.dumps(sorted(notes)))
+            check('Shape puzzles are drawn and visible', seen_svg >= 1, f'{seen_svg} of 10 questions had drawings')
+            check('A full round of 10 sets the first personal best', 'Your first best!' in endtxt and '10 of 10' in endtxt, endtxt.replace('\n', ' ')[:140])
+            d = await db()
+            check('Personal best stored for that child and subject only', d['best'][d['activeChildId']]['reasoning']['score'] == 10 and list(d['best'][d['activeChildId']].keys()) == ['reasoning'], json.dumps(d.get('best')))
+            check('Practice did not change video time or the watching state', json.dumps(d['runtime'].get(d['activeChildId'], {}), sort_keys=True) == before_rt)
+            check('Practice is recorded as practice the child chose', d['sessions'][-1]['reason'] == 'challenge' and d['sessions'][-1]['practice'] is True and d['sessions'][-1]['ind'] == 10)
+            # a second round stopped early never counts as a best
+            await pr.click('#again'); await pr.wait_for_selector('[data-sub]'); await pr.check('#challenge'); await pr.click('[data-sub="reasoning"]'); await pr.wait_for_selector('.prompt')
+            right = await current_answer(pr); await click_choice(pr, right); await asyncio.sleep(1.6)
+            await pr.click('[data-a="done"]'); await pr.wait_for_selector('.over .card'); endtxt = await pr.inner_text('.card')
+            check('Stopping a round early does not set a best', 'Finish all 10 questions next time' in endtxt and 'best' not in endtxt.split('\n')[0].lower(), endtxt.replace('\n', ' ')[:140])
+            # free practice in Year 6 Maths with a typed answer that uses a comma
+            await pr.click('#again'); await pr.wait_for_selector('[data-sub]'); await pr.click('[data-sub="maths"]'); await pr.wait_for_selector('.prompt')
+            note = await pr.inner_text('.lbody .note')
+            check('Year 6 Maths questions are used for a Year 6 child', note.startswith('Year 6 ·'), note)
+            for i in range(12):
+                right = await current_answer(pr)
+                if await pr.query_selector('#typedIn') and re.fullmatch(r'\d{4,}', right or ''):
+                    typed = f'{int(right):,}'; await pr.fill('#typedIn', typed); await pr.click('#typedGo'); await asyncio.sleep(0.4)
+                    fb = await pr.inner_text('.feedback')
+                    check('A large typed answer with a comma is accepted', any(w in fb for w in ('Brilliant', 'You got it', 'Spot on', 'Well done', 'Super thinking')), f'typed {typed}: {fb}')
+                    break
+                await click_choice(pr, right); await asyncio.sleep(1.6)
+            await pr.close()
+            await opt.bring_to_front(); await opt.click('#tabs button[data-v="report"]'); await asyncio.sleep(1)
+            rep = await opt.inner_text('#main')
+            check('Report shows Reasoning, extra practice and the own best', 'Reasoning (11+) Year 6' in rep and 'Beat your own best' in rep and 'Own best (10-question rounds): Reasoning (11+) 10 of 10' in rep, rep[rep.find('Ada'):rep.find('Ada') + 300].replace('\n', ' '))
             check('No script errors in any page', not errors, '; '.join(errors)[:300])
             await ctx.close()
     finally:

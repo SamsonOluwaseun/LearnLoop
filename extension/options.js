@@ -7,7 +7,7 @@
   const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const send = (m) => chrome.runtime.sendMessage(m);
   const today = () => C.dayKey(Date.now());
-  const SUBJ = { maths: 'Maths', english: 'English' };
+  const SUBJ = { maths: 'Maths', english: 'English', reasoning: 'Reasoning (11+)' };
   const mmss = (s) => { s = Math.max(0, Math.round(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
   const STATE = { entertainment: 'Watching allowed', transition: 'Switching to learning', learning: 'Learning', break: 'On a break', rest: 'Done for today', override: 'Parent override' };
   let token = null, db = null, view = (location.hash === '#weekly') ? 'weekly' : 'now';
@@ -197,7 +197,7 @@
     rendered = 'report';
     const now = Date.now(), dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
     const weekStart = dayStart.getTime() - 6 * 86400000;
-    const label = { mastery: 'Finished early', time_limit: 'Time limit reached' };
+    const label = { mastery: 'Finished early', time_limit: 'Time limit reached', practice: 'Extra practice they chose', challenge: 'Beat your own best' };
     main.innerHTML = `<div class="stack">${db.children.map(c => {
       const t = C.report(db, c.id, dayStart.getTime(), now), w = C.report(db, c.id, weekStart, now);
       const sess = db.sessions.filter(s => s.childId === c.id).slice(-10).reverse();
@@ -210,7 +210,9 @@
           <div class="kpi"><b class="num">${w.supported}</b><span>Answered with help this week</span></div>
           <div class="kpi"><b class="num">${w.backgroundMin + w.pipMin + w.lockedMin} min</b><span>Playback not counted this week (background, picture in picture, locked)</span></div>
         </div>
-        <p style="margin:0"><b>Working at:</b> Maths ${esc(L.CUR.YEAR_LABEL[C.ensureChildModel(c, today()).stage.maths])}, English ${esc(L.CUR.YEAR_LABEL[c.stage.english])}</p>
+        <p style="margin:0"><b>Working at:</b> ${C.SUBJECTS.filter(sj => C.ensureChildModel(c, today()).subjects[sj]).map(sj => `${SUBJ[sj]} ${esc(L.CUR.YEAR_LABEL[c.stage[sj]])}`).join(', ') || 'no subjects chosen'}</p>
+        ${w.practiceMin ? `<p class="note" style="margin:0">Active learning this week includes ${w.practiceMin} min of extra practice ${esc(c.name)} chose. Extra practice never uses or earns video time.</p>` : ''}
+        ${Object.keys((db.best || {})[c.id] || {}).length ? `<p style="margin:0"><b>Own best (10-question rounds):</b> ${Object.entries(db.best[c.id]).map(([sj, b]) => `${SUBJ[sj]} ${b.score} of ${b.of} by themselves in ${mmss(b.sec)}`).join(', ')}</p>` : ''}
         ${timeBreakdown(t)}
         ${w.revisit.length ? `<p style="margin:0"><b>Practise again:</b> ${esc(w.revisit.map(s => L.SKILLS[s] ? L.SKILLS[s].label : s).join(', '))}</p>` : ''}
         <div class="tablewrap"><table><thead><tr><th>When</th><th>Subject</th><th>How it ended</th><th class="num">Learning time</th><th class="num">By themselves</th><th class="num">With help</th><th class="num">Not yet</th></tr></thead><tbody>
@@ -298,12 +300,12 @@
 
   // ---------- children and rules ----------
   function ruleFields(c, i) {
-    const R = c.rules;
+    const R = Object.assign({ practiceMax: 15 }, c.rules); c.rules = R;
     const f = (k, label, min, max) => `<label class="field"><span>${label}</span><input type="number" data-i="${i}" data-r="${k}" min="${min}" max="${max}" value="${R[k]}"></label>`;
     return `<div class="presets">
         <button data-i="${i}" data-p="5,10" aria-pressed="${R.ent === 5 && R.max === 10}">5 min video, then up to 10 min learning</button>
         <button data-i="${i}" data-p="10,10" aria-pressed="${R.ent === 10 && R.max === 10}">10 min video, then up to 10 min learning</button></div>
-      <div class="row2">${f('ent', 'Video minutes before learning', 1, 60)}${f('max', 'Learning: most minutes', 1, 30)}${f('min', 'Learning: fewest minutes', 0, 30)}${f('cap', 'Daily video limit (minutes)', 5, 240)}${f('tasks', 'Tasks in a session', 3, 10)}${f('mastery', 'Answers by themselves to finish early', 1, 10)}</div>
+      <div class="row2">${f('ent', 'Video minutes before learning', 1, 60)}${f('max', 'Learning: most minutes', 1, 30)}${f('min', 'Learning: fewest minutes', 0, 30)}${f('cap', 'Daily video limit (minutes)', 5, 240)}${f('tasks', 'Tasks in a session', 3, 10)}${f('mastery', 'Answers by themselves to finish early', 1, 10)}${f('practiceMax', 'Extra practice: most minutes', 5, 30)}</div>
       <label class="field"><span>How video time is measured</span><select data-i="${i}" data-r="mode"><option value="playback" ${R.mode === 'playback' ? 'selected' : ''}>Only while a video is actually playing</option><option value="foreground" ${R.mode === 'foreground' ? 'selected' : ''}>Whenever YouTube is on screen</option></select></label>`;
   }
   let draft = null;
@@ -318,9 +320,9 @@
         <div class="row2"><label class="field"><span>Name shown to the child</span><input data-i="${i}" data-k="name" value="${esc(c.name)}" maxlength="30"></label>
         <div class="field"><span>School year</span><span class="note" style="font-weight:500;padding-top:8px">${c.birthday ? esc(L.CUR.schoolYearFor(c.birthday, today()).label) + ' (worked out from the date of birth, England)' : 'Add a date of birth below, or choose the levels yourself.'}</span></div></div>
         ${birthdayField(c, i)}
-        <div class="row2">${['maths', 'english'].map(sub => `<label class="field"><span>${sub === 'maths' ? 'Maths' : 'English'} level</span><select data-i="${i}" data-stage="${sub}">${L.CUR.YEARS.map(y => `<option value="${y}" ${C.ensureChildModel(c, today()).stage[sub] === y ? 'selected' : ''}>${L.CUR.YEAR_LABEL[y]}</option>`).join('')}</select></label>`).join('')}</div>
+        <div class="row3">${C.SUBJECTS.map(sub => `<label class="field"><span>${SUBJ[sub]} level</span><select data-i="${i}" data-stage="${sub}">${C.yearsFor(sub).map(y => `<option value="${y}" ${C.ensureChildModel(c, today()).stage[sub] === y ? 'selected' : ''}>${L.CUR.YEAR_LABEL[y]}</option>`).join('')}</select></label>`).join('')}</div>
         <p class="note" style="margin:0">The levels start from the date of birth. After that, LearnLoop moves each skill up when your child answers well without help across several sessions, and back down if it gets too hard. You can change the levels here at any time.</p>
-        <div class="checks"><label><input type="checkbox" data-i="${i}" data-s="maths" ${c.subjects.maths ? 'checked' : ''}> Maths</label><label><input type="checkbox" data-i="${i}" data-s="english" ${c.subjects.english ? 'checked' : ''}> English</label>
+        <div class="checks"><label><input type="checkbox" data-i="${i}" data-s="maths" ${c.subjects.maths ? 'checked' : ''}> Maths</label><label><input type="checkbox" data-i="${i}" data-s="english" ${c.subjects.english ? 'checked' : ''}> English</label><label><input type="checkbox" data-i="${i}" data-s="reasoning" ${c.subjects.reasoning ? 'checked' : ''}> Reasoning (11+ practice, Years 4 to 6)</label>
           <label><input type="checkbox" data-i="${i}" data-k="readAloud" ${c.readAloud ? 'checked' : ''}> Read questions aloud</label><label><input type="checkbox" data-i="${i}" data-k="typing" ${c.typing ? 'checked' : ''}> Allow typed answers</label></div>
         ${ruleFields(c, i)}
         <p class="note" style="margin:0">${summaryLine(c)}</p>
@@ -360,7 +362,7 @@
     $('add').onclick = () => { draft.push(C.newChild({ id: 'c' + Date.now(), name: '', today: today() })); editChildren(firstTime); };
     $('save').onclick = async () => {
       if (draft.some(c => !c.name || !c.name.trim())) { $('msg').textContent = 'Give each child a name.'; return; }
-      if (draft.some(c => !c.subjects.maths && !c.subjects.english)) { $('msg').textContent = 'Choose at least one subject for each child.'; return; }
+      if (draft.some(c => !C.SUBJECTS.some(sj => c.subjects[sj]))) { $('msg').textContent = 'Choose at least one subject for each child.'; return; }
       if (draft.some(c => c._bdErr)) { $('msg').textContent = 'Fix the birthday first.'; return; }
       const res = await parent('saveChildren', { children: draft.map(({ _bd, _bdErr, ...c }) => c) });
       if (!res.ok) { $('msg').textContent = 'Could not save.'; return; }
@@ -368,10 +370,11 @@
       if (firstTime) show('now'); else { editChildren(false); $('msg').textContent = 'Saved.'; }
     };
   }
-  // Date of birth sets the school year for both subjects, and the reading and typing defaults
+  // Date of birth sets the school year for every subject, and the reading and typing defaults. Reasoning starts no lower than Year 4.
   function applyStart(c, start) {
     C.ensureChildModel(c, today());
-    c.startYear = { maths: start, english: start }; c.stage = { maths: start, english: start };
+    const fresh = C.newChild({ id: c.id, name: c.name || 'x', birthday: c.birthday, today: today() });
+    c.startYear = fresh.startYear; c.stage = Object.assign({}, fresh.stage);
     c.band = start === 'R' ? 'early' : 'primary'; c.readAloud = start === 'R' || start === 'Y1'; c.typing = start !== 'R';
   }
   function splitDate(iso) { if (!iso) return { y: '', m: '', d: '' }; const [y, m, d] = iso.split('-'); return { y, m: String(+m), d: String(+d) }; }
@@ -387,11 +390,11 @@
         <select data-i="${i}" data-b="y" aria-label="Year">${opt('', 'Year', v.y)}${years.join('')}</select>
         ${c.birthday || c._bd ? `<button class="btn small ghost" data-bclear="${i}">Clear</button>` : ''}
       </div>
-      ${c._bdErr ? `<span class="err">${esc(c._bdErr)}</span>` : age !== null ? `<span class="note" style="font-weight:500">Age ${age}, ${esc(L.CUR.schoolYearFor(c.birthday, today()).label)}. Questions start at ${esc(L.CUR.YEAR_LABEL[C.startYearFrom(c.birthday, today())])} level.${L.CUR.schoolYearFor(c.birthday, today()).index > 3 ? ' LearnLoop currently goes up to Year 3, so questions may feel easy.' : ''}${L.CUR.schoolYearFor(c.birthday, today()).index < 0 ? ' Not at school yet, so questions start at Reception level.' : ''}</span>` : ''}
+      ${c._bdErr ? `<span class="err">${esc(c._bdErr)}</span>` : age !== null ? `<span class="note" style="font-weight:500">Age ${age}, ${esc(L.CUR.schoolYearFor(c.birthday, today()).label)}. Questions start at ${esc(L.CUR.YEAR_LABEL[C.startYearFrom(c.birthday, today())])} level.${L.CUR.schoolYearFor(c.birthday, today()).index > 6 ? ' LearnLoop goes up to Year 6, so questions may feel easy.' : ''}${L.CUR.schoolYearFor(c.birthday, today()).index < 0 ? ' Not at school yet, so questions start at Reception level.' : ''}</span>` : ''}
     </div>`;
   }
   function summaryLine(c) {
-    const R = c.rules; const subs = ['maths', 'english'].filter(s => c.subjects[s]).map(s => SUBJ[s]).join(' and ') || 'no subjects yet';
+    const R = c.rules; const subs = C.SUBJECTS.filter(s => c.subjects[s]).map(s => SUBJ[s]).join(' and ').replace(/ and (?=.* and )/, ', ') || 'no subjects yet';
     return `After ${R.ent} minutes of measured video, ${esc(c.name || 'this child')} does ${subs} for up to ${R.max} minutes. They can go back early after ${R.mastery} different answers by themselves, but not before ${R.min} minute${R.min === 1 ? '' : 's'}. Daily video limit ${R.cap} minutes.`;
   }
 

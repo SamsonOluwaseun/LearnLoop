@@ -1,10 +1,10 @@
-# Architecture (version 1.0.0)
+# Architecture (version 1.1.0)
 
 LearnLoop is a single Chrome Manifest V3 extension. Every part runs inside Chrome on the laptop. Nothing talks to the internet.
 
 | Part | File | Job |
 |---|---|---|
-| Question bank | `extension/curriculum.js` | 57 skills from Reception to Year 3, each tied to a national curriculum statement, with three levels. Maths is generated and calculated, English items are written by hand. See docs/CURRICULUM.md. |
+| Question bank | `extension/curriculum.js`, `extension/curriculum-ks2.js`, `extension/reasoning.js` | 123 skills. `curriculum.js` holds Reception to Year 3 and the shared helpers. `curriculum-ks2.js` adds Years 4 to 6 Maths and English. `reasoning.js` adds the Reasoning (11+ practice) track for Years 4 to 6. Each pack adds its skills through `install()`, which refuses duplicate ids. Maths, number, letter and shape puzzles are generated and calculated, word items are written by hand. Drawings are SVG built by the pack's own code, never from outside input. See docs/CURRICULUM.md. |
 | Tutoring engine | `extension/engine.js` | Grading, hints, worked examples, session and mastery rules. Deterministic. No AI model. |
 | Core rules | `extension/core.js` | Stored data shape, crediting watch time, switching states, daily limit, overrides, PIN hashing, reports, per-skill levels, the year each child works at, and session planning. Pure functions so they can be unit tested. |
 | Background worker | `extension/background.js` | Holds the stored state, receives heartbeats, decides when to switch, redirects YouTube during learning, speaks with Windows voices (`chrome.tts`). |
@@ -57,3 +57,7 @@ The engine and core rules are already free of browser calls, so they can move be
 ## Resource use
 
 There are no dependencies and no bundled runtime. The unpacked extension is about 170 KB. Memory on the target 4 GB laptop has not been measured yet. See [MANUAL-CHECKS.md](MANUAL-CHECKS.md).
+
+## Extra practice (version 1.1)
+
+The toolbar button opens `learn.html?practice=1`. The page asks the worker for `practiceStart`, which returns the active child, the subjects switched on, a plan for each subject and the child's own bests. When the child finishes it sends `practiceFinish`, and `recordPractice()` in `core.js` stores the session with `practice: true`, updates skill levels from the answers, and checks the own best. It never touches the runtime state, the video balance or the daily total. A best is set only by a finished 10-question round, the score is answers given without help, and time only breaks a tie (`betterThan()`).

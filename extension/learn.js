@@ -5,11 +5,15 @@
   const app = document.getElementById('app');
   const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const mmss = (s) => { s = Math.max(0, Math.floor(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
-  const SUBJ = { maths: 'Maths', english: 'English' };
+  const SUBJ = { maths: 'Maths', english: 'English', reasoning: 'Reasoning' };
   const send = (m) => chrome.runtime.sendMessage(m);
   const PRAISE = ['Brilliant!', 'You got it!', 'Spot on!', 'Well done!', 'Super thinking!'];
 
-  let child, runtime, session, subject, offset = { elapsed: 0, independent: 0 }, ui = { choiceState: {} }, onBreak = false, finished = false;
+  let child, runtime, session, subject, R, offset = { elapsed: 0, independent: 0 }, ui = { choiceState: {} }, onBreak = false, finished = false;
+  // Practice mode: opened from the toolbar button. The child picks a subject. It needs no video time and earns none.
+  const PRACTICE = new URLSearchParams(location.search).has('practice');
+  let practice = null; // { challenge, max, roundSize, best }
+  let last = performance.now(), sinceSave = 0;
 
   function speak(text) {
     if (!child || !child.readAloud || !text) return;
@@ -20,6 +24,7 @@
   const POWERED = `<div class="foot-powered"><img src="brand/samlytics-mark.png" alt="">Powered by Samlytics Data Services</div>`;
   function card(html) { app.innerHTML = `<div class="over"><div style="display:grid;justify-items:center;width:100%"><div class="card">${html}</div>${POWERED}</div></div>`; return app; }
 
+  if (PRACTICE) { await startPractice(); return; }
   const start = await send({ type: 'learnStart' });
   if (!start || start.error) {
     card(`<h2>Nobody is chosen yet</h2><p>Open YouTube and pick who is watching, or ask a grown-up.</p>`);
@@ -34,7 +39,7 @@
 
   subject = start.subject || (runtime.session ? runtime.session.subject : (runtime.subject || 'maths'));
   offset = { elapsed: runtime.session ? runtime.session.elapsed : 0, independent: runtime.session ? runtime.session.independent : 0 };
-  const R = child.rules;
+  R = child.rules;
   session = new L.LearningSession({
     subject, band: child.band, plan: start.plan, seed: Math.floor(Math.random() * 1e9), revision: start.revision || [],
     config: { minSec: Math.max(0, R.min * 60 - offset.elapsed), maxSec: Math.max(30, R.max * 60 - offset.elapsed),
@@ -42,29 +47,55 @@
   });
   onBreak = runtime.state === 'break';
   if (onBreak) showBreak(); else renderShell();
+  startClock();
 
   // ---- clock: monotonic, only while the page is on screen and not on a break ----
-  let last = performance.now(), sinceSave = 0;
-  setInterval(() => {
-    const now = performance.now(); const dt = (now - last) / 1000; last = now;
-    if (finished || onBreak || document.visibilityState !== 'visible' || dt > 5) return;
-    session.tick(dt); sinceSave += dt;
-    if (sinceSave >= 5) { sinceSave = 0; saveProgress(); }
-    if (session.done && !ui.locked) finish();
-    renderClock();
-  }, 250);
-  function saveProgress() { send({ type: 'learnProgress', elapsed: offset.elapsed + session.elapsed, independent: offset.independent + session.independentCount }); }
+  function startClock() {
+    last = performance.now();
+    setInterval(() => {
+      const now = performance.now(); const dt = (now - last) / 1000; last = now;
+      if (finished || onBreak || document.visibilityState !== 'visible' || dt > 5) return;
+      session.tick(dt); sinceSave += dt;
+      if (sinceSave >= 5) { sinceSave = 0; saveProgress(); }
+      if (session.done && !ui.locked) finish();
+      renderClock();
+    }, 250);
+  }
+  function saveProgress() { if (PRACTICE) return; send({ type: 'learnProgress', elapsed: offset.elapsed + session.elapsed, independent: offset.independent + session.independentCount }); }
+
+  // ---------- practice and "beat your own best" ----------
+  async function startPractice() {
+    const st = await send({ type: 'practiceStart' });
+    if (!st || st.error) { card(`<h2>Nobody is chosen yet</h2><p>Open YouTube and pick who is using LearnLoop, or ask a grown-up.</p>`); return; }
+    child = st.child; R = child.rules;
+    if (!st.subjects.length) { card(`<h2>No subjects chosen</h2><p>Ask a grown-up to choose subjects in LearnLoop.</p>`); return; }
+    const bestLine = (s) => { const b = st.best[s]; return b ? `Your best: ${b.score} of ${b.of}` : 'No best yet'; };
+    card(`<h2>Practise with ${esc(child.name)}</h2>
+      <p style="margin:0">Pick something to practise. This is extra practice, so it does not use or earn video time.</p>
+      <label class="switch"><input type="checkbox" id="challenge"> <span><b>Beat your own best</b>: ${st.roundSize} questions. Try to answer more by yourself than last time. It's only you against you.</span></label>
+      <div class="choices">${st.subjects.map(s => `<button class="choice text" data-sub="${s}">${SUBJ[s]}<small class="note" style="display:block;font-weight:600">${bestLine(s)}</small></button>`).join('')}</div>`);
+    speak(`Hello ${child.name}. What would you like to practise?`);
+    app.querySelectorAll('[data-sub]').forEach(b => b.onclick = () => {
+      subject = b.dataset.sub; const challenge = document.getElementById('challenge').checked;
+      practice = { challenge, max: st.practiceMax, roundSize: st.roundSize, best: st.best[subject] || null };
+      session = new L.LearningSession({ subject, band: child.band, plan: st.plans[subject], seed: Math.floor(Math.random() * 1e9), revision: st.revision[subject] || [],
+        config: { minSec: 0, maxSec: st.practiceMax * 60, tasks: challenge ? st.roundSize : Math.max(5, R.tasks), masteryTarget: Infinity } });
+      renderShell(); startClock();
+    });
+  }
+  function roundDone() { return PRACTICE && practice && practice.challenge && session.index >= practice.roundSize; }
 
   function renderShell() {
     app.innerHTML = `<div class="learn">
-      <div class="lhead"><div class="lbrand"><img src="brand/samlytics-mark.png" alt="Samlytics Data Services logo"><div class="brandtext"><h2>${SUBJ[subject]} with ${esc(child.name)}</h2><span class="powered">Powered by Samlytics Data Services</span></div></div><div class="stars"></div><span class="clock num"></span></div>
+      <div class="lhead"><div class="lbrand"><img src="brand/samlytics-mark.png" alt="Samlytics Data Services logo"><div class="brandtext"><h2>${SUBJ[subject]}${PRACTICE ? (practice.challenge ? ': beat your best' : ' practice') : ''} with ${esc(child.name)}</h2><span class="powered">Powered by Samlytics Data Services</span></div></div><div class="stars"></div><span class="clock num"></span></div>
       <div class="lbody"></div>
-      <div class="lfoot"><button data-a="help">Help me</button><button data-a="say">Say it again</button><button data-a="alt">Try another way</button><button data-a="break">I need a break</button></div></div>`;
+      <div class="lfoot"><button data-a="help">Help me</button><button data-a="say">Say it again</button><button data-a="alt">Try another way</button>${PRACTICE ? '<button data-a="done">I\'m finished</button>' : '<button data-a="break">I need a break</button>'}</div></div>`;
     const f = app.querySelector('.lfoot');
     f.querySelector('[data-a=help]').onclick = () => { if (ui.locked) return; const h = session.help(); if (!h) return; ui.feedback = { cls: 'hint', t: h.text }; render(); speak(h.text); };
     f.querySelector('[data-a=say]').onclick = () => { if (session.current) speakAlways(session.current.speak); };
     f.querySelector('[data-a=alt]').onclick = () => { if (ui.locked) return; const a = session.anotherWay(); if (!a) return; ui.alt = a; ui.feedback = { cls: 'hint', t: 'Here is another way to look at it.' }; render(); speak(ui.feedback.t); };
-    f.querySelector('[data-a=break]').onclick = () => { onBreak = true; saveProgress(); send({ type: 'learnBreak', on: true }); showBreak(); };
+    if (PRACTICE) f.querySelector('[data-a=done]').onclick = () => { if (!ui.locked) { session._finish('stopped'); finish(); } };
+    else f.querySelector('[data-a=break]').onclick = () => { onBreak = true; saveProgress(); send({ type: 'learnBreak', on: true }); showBreak(); };
     render(); speak(session.current && session.current.speak);
   }
 
@@ -99,6 +130,7 @@
     if (v.kind === 'sentence') return `<div class="sentence">${esc(v.text)}</div>`;
     if (v.kind === 'passage') return `<div class="passage">${esc(v.text)}</div>`;
     if (v.kind === 'column') return `<pre class="column">${String(v.a).padStart(4)}\n${v.op} ${String(v.b).padStart(3)}\n────</pre>`;
+    if (v.kind === 'svg') return `<div class="visual svgbox">${v.svg}</div>`; // drawn by the question bank's own code, never from outside input
     if (v.kind === 'clue' || v.kind === 'chunks') return `<div class="feedback hint">${esc(v.text)}</div>`;
     return '';
   }
@@ -106,8 +138,9 @@
   function render(heldQ) {
     const box = app.querySelector('.learn'); if (!box) return;
     const q = heldQ || session.current; if (!q) return;
-    const need = R.mastery, have = offset.independent + session.independentCount;
-    box.querySelector('.stars').innerHTML = Array.from({ length: need }, (_, i) => `<i class="${i < have ? 'on' : ''}"></i>`).join('') + `<span class="note" style="margin-left:6px">${have} of ${need} by yourself</span>`;
+    const need = PRACTICE ? (practice.challenge ? practice.roundSize : 0) : R.mastery, have = offset.independent + session.independentCount;
+    box.querySelector('.stars').innerHTML = PRACTICE && !practice.challenge ? `<span class="note">${have} by yourself so far</span>`
+      : Array.from({ length: need }, (_, i) => `<i class="${i < have ? 'on' : ''}"></i>`).join('') + `<span class="note" style="margin-left:6px">${have} of ${need} by yourself</span>`;
     const isPic = q.response === 'picture';
     const typed = q.response === 'choice-or-type' && child.typing;
     box.querySelector('.lbody').innerHTML = `
@@ -116,7 +149,9 @@
       <div class="prompt">${esc(q.prompt)}</div>
       ${child.readAloud ? '<button class="speakbtn" id="spk" aria-label="Read the question again">🔊</button>' : ''}
       ${renderVisual(ui.alt || q.visual)}
-      <div class="choices">${q.choices.map(c => `<button class="choice ${isPic ? 'pic' : String(c.label).length > 6 ? 'text' : ''} ${ui.choiceState[c.value] || ''}" data-v="${esc(c.value)}" aria-label="${esc(c.alt || c.label)}">${esc(c.label)}</button>`).join('')}</div>
+      <div class="choices">${q.choices.map(c => c.svg
+        ? `<button class="choice svgc ${ui.choiceState[c.value] || ''}" data-v="${esc(c.value)}" aria-label="${esc(c.alt || c.label)}"><span class="opt">${esc(c.label)}</span>${c.svg}</button>`
+        : `<button class="choice ${isPic ? 'pic' : String(c.label).length > 6 ? 'text' : ''} ${ui.choiceState[c.value] || ''}" data-v="${esc(c.value)}" aria-label="${esc(c.alt || c.label)}">${esc(c.label)}</button>`).join('')}</div>
       ${typed ? `<div class="typed"><label for="typedIn">Or type it</label><input id="typedIn" inputmode="numeric" autocomplete="off"><button class="btn small ghost" id="typedGo">Check</button></div>` : ''}
       <div class="feedback ${ui.feedback ? ui.feedback.cls : ''}" role="status">${ui.feedback ? esc(ui.feedback.t) : ''}</div>`;
     box.querySelectorAll('.choice').forEach(b => b.onclick = () => { const v = b.dataset.v; choose(q.grading === 'number-exact' ? Number(v) : v); });
@@ -126,13 +161,15 @@
   }
   function renderClock() {
     const c = app.querySelector('.clock'); if (!c) return;
-    c.textContent = `${mmss(offset.elapsed + session.elapsed)} of up to ${mmss(R.max * 60)}`;
+    if (PRACTICE && practice.challenge) { c.textContent = `Question ${Math.min(session.index + 1, practice.roundSize)} of ${practice.roundSize} · ${mmss(session.elapsed)}`; return; }
+    c.textContent = `${mmss(offset.elapsed + session.elapsed)} of up to ${mmss((PRACTICE ? practice.max : R.max) * 60)}`;
   }
 
   function nextAfter(ms, q) {
     ui.locked = true; render(q);
     setTimeout(() => {
       ui.locked = false; ui.feedback = null; ui.choiceState = {}; ui.alt = null;
+      if (roundDone()) session._finish('round_done');
       if (session.done) finish(); else { render(); speak(session.current.speak); }
     }, ms);
   }
@@ -168,6 +205,7 @@
 
   async function finish() {
     if (finished) return; finished = true;
+    if (PRACTICE) return finishPractice();
     const s = session.summary();
     const summary = Object.assign({}, s, {
       learningSec: offset.elapsed + s.learningSec, independentCorrect: offset.independent + s.independentCorrect,
@@ -185,6 +223,26 @@
     speak(early ? `You did it, ${child.name}!` : `Great effort today, ${child.name}!`);
     runtime.saved = out && out.saved;
     document.getElementById('back').onclick = goBack;
+  }
+
+  async function finishPractice() {
+    const s = session.summary();
+    const out = await send({ type: 'practiceFinish', result: { subject, challenge: practice.challenge, complete: s.reason === 'round_done', learningSec: s.learningSec, revisit: s.revisit,
+      attempts: session.attempts.map(a => ({ skill: a.skill, correct: a.correct, support: a.support })) } }) || {};
+    let head = 'Great practice!', body = `You answered ${s.independentCorrect} by yourself${s.supportedCorrect ? ` and ${s.supportedCorrect} with help` : ''}.`;
+    if (practice.challenge && out.round) {
+      const r = out.round, p = out.prev;
+      if (s.reason !== 'round_done') body += ' Finish all ' + practice.roundSize + ' questions next time to set a best.';
+      else if (out.best && p) { head = 'New personal best!'; body = `${r.score} of ${r.of} by yourself in ${mmss(r.sec)}. Your old best was ${p.score} of ${p.of} in ${mmss(p.sec)}.`; }
+      else if (out.best) { head = 'Your first best!'; body = `${r.score} of ${r.of} by yourself in ${mmss(r.sec)}. Can you beat it next time?`; }
+      else body = `${r.score} of ${r.of} by yourself in ${mmss(r.sec)}. Your best is still ${p.score} of ${p.of}. Every go makes your brain stronger.`;
+    }
+    card(`<h2>${head}</h2><p style="font-size:18px;margin:0">${esc(body)}</p>
+      ${s.revisit.length ? `<p class="note" style="margin:0">We'll practise ${esc(s.revisit.map(x => L.SKILLS[x].label.toLowerCase()).join(' and '))} again.</p>` : ''}
+      <div class="actions"><button class="btn" id="again">Practise again</button><button class="btn ghost" id="close">I'm done</button></div>`);
+    speak(head);
+    document.getElementById('again').onclick = () => location.reload();
+    document.getElementById('close').onclick = () => window.close();
   }
 
   function showRest(afterLearning, total) {

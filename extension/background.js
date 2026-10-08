@@ -2,7 +2,7 @@
  * Owns the stored state. Pages and the YouTube script talk to it with messages.
  * The worker can be suspended at any time, so nothing important lives only in memory.
  */
-importScripts('curriculum.js', 'engine.js', 'core.js');
+importScripts('curriculum.js', 'curriculum-ks2.js', 'reasoning.js', 'engine.js', 'core.js');
 const C = self.LLCore;
 const LEARN_URL = chrome.runtime.getURL('learn.html');
 const BLOCK_RULE_ID = 1;
@@ -124,7 +124,7 @@ async function handle(msg, sender) {
       const r = child ? C.runtimeFor(db, child.id, now) : null;
       return { configured: !!db.parent && db.children.length > 0, child, runtime: r,
         children: db.children.map(c => ({ id: c.id, name: c.name })), paused: now < (db.monitoringPausedUntil || 0),
-        revision: child ? (db.revision[child.id] || { maths: [], english: [] }) : null, lastBeat: db.lastBeat || null };
+        revision: child ? (db.revision[child.id] || { maths: [], english: [], reasoning: [] }) : null, lastBeat: db.lastBeat || null };
     }
     case 'chooseChild': {
       return withDb(async db => {
@@ -160,7 +160,7 @@ async function handle(msg, sender) {
       });
       if (res.effects.includes('transition')) {
         const mins = Math.max(1, Math.round(res.runtime.balanceUsed / 60));
-        const subject = res.runtime.subject === 'english' ? 'English' : 'Maths';
+        const subject = { maths: 'Maths', english: 'English', reasoning: 'Reasoning' }[res.runtime.subject] || 'Maths';
         const text = `Well done, ${res.child.name}! You've watched for ${mins} minute${mins === 1 ? '' : 's'}. Let's try some ${subject} together.`;
         if (sender.tab) chrome.tabs.sendMessage(sender.tab.id, { type: 'countdown', text, seconds: 10 }).catch(() => {});
         if (res.child.readAloud) speak(text);
@@ -197,6 +197,19 @@ async function handle(msg, sender) {
         return { child, runtime: r, subject, plan: C.planSession(db, child, subject, now), revision: (db.revision[child.id] || {})[subject] || [] };
       });
     }
+    // Practice the child chooses from the toolbar button. It never changes the watching state or video time.
+    case 'practiceStart': {
+      return withDb(db => {
+        const child = db.children.find(c => c.id === db.activeChildId);
+        if (!child) return { error: 'no_child' };
+        C.ensureChildModel(child, C.dayKey(now));
+        const subjects = C.SUBJECTS.filter(s => child.subjects[s]);
+        const plans = {}, revision = {};
+        for (const s of subjects) { plans[s] = C.planSession(db, child, s, now); revision[s] = (db.revision[child.id] || {})[s] || []; }
+        return { child, subjects, plans, revision, best: (db.best || {})[child.id] || {}, practiceMax: child.rules.practiceMax || C.DEFAULT_RULES.practiceMax, roundSize: C.CHALLENGE_QUESTIONS };
+      });
+    }
+    case 'practiceFinish': return withDb(db => C.recordPractice(db, db.activeChildId, msg.result || {}, now) || { error: 'not_recorded' });
     case 'learnProgress': return withDb(db => { if (db.activeChildId) C.saveProgress(db, db.activeChildId, msg); return { ok: true }; });
     case 'learnBreak': return withDb(db => { const r = db.runtime[db.activeChildId]; if (r && (r.state === 'learning' || r.state === 'break')) r.state = msg.on ? 'break' : 'learning'; return { ok: true }; });
     case 'learnFinish': {
@@ -238,7 +251,7 @@ async function handle(msg, sender) {
         if (a === 'saveChildren') {
           for (const nw of msg.children) { // record parent changes to the levels so the report can explain them
             const old = db.children.find(c => c.id === nw.id);
-            if (old && nw.stage) { C.ensureChildModel(old, C.dayKey(now)); for (const sub of ['maths', 'english']) if (old.stage[sub] !== nw.stage[sub]) C.setStage(db, old, sub, nw.stage[sub], now); }
+            if (old && nw.stage) { C.ensureChildModel(old, C.dayKey(now)); for (const sub of C.SUBJECTS) if (nw.stage[sub] && old.stage[sub] !== nw.stage[sub]) C.setStage(db, old, sub, nw.stage[sub], now); }
           }
           db.children = msg.children.map(c => Object.assign({}, c, { name: String(c.name).slice(0, 30) }));
           if (!db.children.some(c => c.id === db.activeChildId)) db.activeChildId = null;
