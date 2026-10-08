@@ -1,0 +1,68 @@
+{
+  "manifest_version": 3,
+  "name": "LearnLoop",
+  "short_name": "LearnLoop",
+  "version": "1.0.0",
+  "description": "Turns some YouTube time into short, friendly Maths and English practice. Offline and free. Powered by Samlytics Data Services.",
+  "minimum_chrome_version": "116",
+  "icons": {
+    "16": "icons/16.png",
+    "32": "icons/32.png",
+    "48": "icons/48.png",
+    "128": "icons/128.png"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/16.png",
+      "32": "icons/32.png"
+    }
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": [
+    "storage",
+    "alarms",
+    "idle",
+    "tts",
+    "declarativeNetRequestWithHostAccess",
+    "scripting",
+    "notifications"
+  ],
+  "host_permissions": [
+    "*://*.youtube.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.youtube.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "learn.html",
+        "learn.js",
+        "curriculum.js",
+        "engine.js",
+        "ui.css",
+        "brand/samlytics-mark.png",
+        "fonts/*.woff2"
+      ],
+      "matches": [
+        "*://*.youtube.com/*"
+      ]
+    }
+  ]
+}

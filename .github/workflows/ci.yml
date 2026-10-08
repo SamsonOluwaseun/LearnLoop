@@ -1,0 +1,25 @@
+name: tests and release
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: node --test tests/*.test.js
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: test
+    runs-on: ubuntu-latest
+    permissions: { contents: write }
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash scripts/build-release.sh
+      - env: { GH_TOKEN: '${{ github.token }}' }
+        # Works whether the release was made on the GitHub website or not
+        run: gh release upload "$GITHUB_REF_NAME" dist/*.zip --clobber || gh release create "$GITHUB_REF_NAME" dist/*.zip --title "LearnLoop $GITHUB_REF_NAME" --notes-file docs/KNOWN-LIMITATIONS.md

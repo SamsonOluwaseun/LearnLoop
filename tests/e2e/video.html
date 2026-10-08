@@ -1,0 +1,12 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Stand-in video page</title></head>
+<body style="margin:0;background:#111;color:#eee;font-family:sans-serif">
+<p>Stand-in for a YouTube watch page (test only).</p>
+<video class="html5-main-video" id="v" width="640" height="360" muted playsinline></video>
+<script>
+// A canvas stream gives a real <video> element that plays and pauses, without any network.
+const c = document.createElement('canvas'); c.width = 320; c.height = 180; const x = c.getContext('2d');
+let f = 0; setInterval(() => { x.fillStyle = `hsl(${f++ % 360},60%,40%)`; x.fillRect(0, 0, 320, 180); }, 50);
+// ?file=1 uses a real 3-minute clip so playback speed and seeking behave like YouTube
+if (new URLSearchParams(location.search).get('file')) { const el = document.getElementById('v'); el.src = 'clip.webm'; el.loop = true; }
+else document.getElementById('v').srcObject = c.captureStream(20);
+</script></body></html>

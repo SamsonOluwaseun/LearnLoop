@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LearnLoop for parents</title>
+<link rel="stylesheet" href="ui.css">
+<style>
+  .wrap{max-width:980px}
+  .stack{display:grid;gap:16px}
+  .kidform{border:1px solid var(--line);border-radius:14px;padding:14px;display:grid;gap:10px}
+  .actions{display:flex;flex-wrap:wrap;gap:8px}
+  .code{font-family:Consolas,"Cascadia Mono",monospace;font-size:26px;letter-spacing:.12em;background:var(--accent-soft);padding:10px 16px;border-radius:12px;user-select:all}
+  .ok{color:var(--leaf);font-weight:700}
+  .state{font-weight:700}
+  .confirm{background:var(--rose-soft);border-radius:12px;padding:12px;display:grid;gap:8px}
+  .card{text-align:left;justify-items:stretch;margin:24px auto}
+  select[data-b]{width:auto;min-width:96px;border:1px solid var(--line);border-radius:9px;padding:7px 10px;background:var(--surface)}
+  .tabs{flex-wrap:wrap}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><img class="mark" src="brand/samlytics-mark.png" alt="Samlytics Data Services logo"><div class="brandtext"><h1>LearnLoop</h1><span class="powered">Powered by <b>Samlytics Data Services</b></span></div><span class="chip">For parents</span></div>
+    <nav class="tabs" role="tablist" id="tabs" hidden>
+      <button role="tab" data-v="now" aria-selected="true">Right now</button>
+      <button role="tab" data-v="report" aria-selected="false">Report</button>
+      <button role="tab" data-v="weekly" aria-selected="false">Weekly email</button>
+      <button role="tab" data-v="kids" aria-selected="false">Children and rules</button>
+      <button role="tab" data-v="privacy" aria-selected="false">Data and PIN</button>
+    </nav>
+  </header>
+  <main id="main"></main>
+</div>
+<script src="curriculum.js"></script>
+<script src="engine.js"></script>
+<script src="core.js"></script>
+<script src="options.js"></script>
+</body>
+</html>
