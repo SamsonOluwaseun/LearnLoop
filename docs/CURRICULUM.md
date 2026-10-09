@@ -38,7 +38,9 @@ These rules are starting points for a family pilot, not proven teaching rules.
 
 
 
-**123 skills in content version 1.1.0.**
+
+
+**124 skills in content version 1.2.0.**
 
 ## Reception Maths
 
@@ -256,6 +258,10 @@ Reasoning is a general practice track for families preparing for selective secon
 - **Non-verbal reasoning:** shape sequences, odd shape out, mirror images, turning shapes, shape grids and shape analogies. Every shape is drawn by code, and the tests prove that exactly one option fits the rule.
 
 All reasoning questions are original. Published 11+ papers from test providers, CGP, Twinkl and others are copyrighted, so LearnLoop uses none of their questions. Word puzzles are written and reviewed by hand. Hidden words, letter codes, sums and shape puzzles are checked by code.
+
+## Your own spelling list
+
+Parents can add up to 30 words of their own, for example the school's weekly spellings (English programme of study, spelling appendix 1). They come up in every English session once there are at least 3. Level 1 and 2 ask the child to pick the right spelling from close misspellings made by common slips. Level 3 says the word and asks the child to type it, if typing is allowed for that child. This skill is counted as "Our list" rather than a school year.
 
 ## Not covered yet
 

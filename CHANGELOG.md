@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.2.0 (9 October 2026)
+
+Added
+- **Topics to focus on or skip.** In **Children and rules > Topics and spelling list**, set any topic to Focus (it comes up first in every session) or Skip (left out for now). A focus topic can come from another year.
+- **Your child's own spelling list.** Type or paste up to 30 words, for example the school's weekly spellings. They come up in every English session. Children pick the right spelling from close misspellings first, and at the top level hear the word and type it. Typed spellings ignore capital letters. "Try another way" shows the choices again.
+- **Close the gaps** panel on the Right now page. It warns when Incognito windows are not covered and explains Guest mode, other Chrome profiles and other browsers. The toolbar button shows a tip too.
+- `tools/windows/close-the-gaps.reg` and `undo-close-the-gaps.reg`, which turn Incognito, Guest mode and new Chrome profiles off or back on using Chrome's documented settings. Not yet tried on our own laptop.
+- **Chrome Web Store and Edge Add-ons submission packs** in `store/`: listing text, permission justifications, 1280 x 800 screenshots and a promo tile.
+- **A website and privacy policy** in `docs/` for GitHub Pages.
+- **Android sub-project** in `mobile/`: an early test version of LearnLoop for phones and tablets that shares the same questions and rules. See mobile/README.md.
+
+Fixed
+- A reasoning "letters for numbers" question could very rarely fail to find a single right answer and stop the session. It now always finds one.
+
 ## 1.1.0 (8 October 2026)
 
 Added

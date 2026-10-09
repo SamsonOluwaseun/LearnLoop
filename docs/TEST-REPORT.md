@@ -1,27 +1,21 @@
-# Test report, version 1.1.0
+# Test report, version 1.2.0
 
-Date: 8 October 2026. Run on the build machine (Linux, Chromium with the unpacked extension). Earlier versions were used by the project owner's family on a Windows laptop with Chrome. A structured run of MANUAL-CHECKS.md on that laptop is still to be recorded, and version 1.1.0 has not yet been tried on it.
+Date: 9 October 2026. Run on the build machine (Linux, Chromium with the unpacked extension). Earlier versions were used by the project owner's family on a Windows laptop with Chrome. A structured run of MANUAL-CHECKS.md on that laptop is still to be recorded, and versions 1.1.0 and 1.2.0 have not yet been tried on it.
 
-## Unit tests: 72 of 72 pass
+## Unit tests: 76 of 76 pass
 
 `node --test tests/*.test.js`
 
-New in 1.1.0:
-- every one of the 123 skills at all 3 levels produces valid questions: exactly one right answer, no repeated options, a clue and a worked example, no missing values, and typed answers that mark correctly (450 questions per skill in the unit test, and 110,700 in a larger sweep during development)
-- turning shapes: only the answer can be made by turning the shape, and every other option is a mirror image
-- mirror images: the answer is the reflection in the mirror line and appears once
-- odd shape out: three options are turns of each other and only the answer is flipped, or only the answer breaks the sides-and-dots rule
-- shape grids: rows and columns follow their rules, and level 3 grids use each colour once per row and column
-- hidden words run across two words and are never a whole word, and no wrong option is also hidden
-- balancing sums, letter sums and letter codes are recalculated independently and match the answer
-- Reasoning stays within Years 4 to 6, older profiles gain it switched off, and learning takes turns between all subjects switched on
-- extra practice never changes the watching state, video balance or daily total
-- beat your own best counts only finished rounds, never counts helped answers, and uses time only to break a tie
-- typed numbers with commas and minus signs are understood
+New in 1.2.0:
+- your own spelling list: the right spelling appears once, wrong options are never another word on the list or a word LearnLoop knows, level 3 asks the child to type the word (or gives choices when typing is off), and typed spellings ignore capital letters
+- spelling words are cleaned: single words only, no repeats, at most 30, with rejected entries reported
+- focus topics come first (including one from another year), skipped topics are left out, skipping everything is ignored rather than leaving an empty session, and the spelling list joins English once it has 3 words
+- a session built from the plan asks the child's own words
+- "letters for numbers" always finds exactly one answer (checked over 40,000 questions)
 
-## End-to-end: 73 of 73 checks pass
+## End-to-end, Chrome extension: 78 of 78 checks pass
 
-`python3 tests/e2e/run_e2e.py` loads the real extension in Chromium against a local stand-in video page. The test copy of the extension exposes the current answer so the test can answer right or wrong on purpose. That hook is not in the release.
+`python3 tests/e2e/run_e2e.py` loads the real extension in Chromium against a local stand-in video page. The test copy of the extension exposes the current answer so the test can answer right or wrong on purpose. That hook is not in the release. One check (a large typed answer with a comma) only runs when such a question comes up, so the total can vary by one between runs. The same thing is covered by a unit test.
 
 | Check | Result |
 |---|---|
@@ -97,17 +91,50 @@ New in 1.1.0:
 | Stopping a round early does not set a best | Pass |
 | Year 6 Maths questions are used for a Year 6 child | Pass |
 | Report shows Reasoning, extra practice and the own best | Pass |
+| Right now warns that Incognito windows are not covered yet | Pass |
+| Spelling words are cleaned and a bad entry is explained | Pass |
+| Topic choices and the spelling list are saved for that child | Pass |
+| English starts with the child's own spelling words | Pass |
+| A listen button is shown for spelling even without read-aloud | Pass |
 | No script errors in any page | Pass |
 
+## Android app screens: 17 of 17 checks pass
+
+`python3 tests/mobile/run_mobile_web.py` builds the phone app's web part and runs it in Chromium at phone size (390 x 844), with a stand-in for the Android side. It shows the screens, storage, learning and practice work, and that the app tells Android the right things. It cannot test the Android code itself.
+
+| Check | Result |
+|---|---|
+| First run asks for a parent PIN | Pass |
+| PIN is stored only as a salted hash | Pass |
+| A child is saved with the school year from the birthday | Pass |
+| Android is told who to count and for how long | Pass |
+| Phone setup explains each permission in plain words | Pass |
+| Start counting turns on the Android counter | Pass |
+| A gentle countdown names the child, the minutes and the subject | Pass |
+| The learning screen from the extension runs inside the app | Pass |
+| Answering by themselves finishes the session early | Pass |
+| The session is saved with answers by themselves, not as practice | Pass |
+| Android is told learning has finished | Pass |
+| Back to my video leaves the app for YouTube | Pass |
+| The child's home screen greets them and offers practice | Pass |
+| Practice is saved as practice and "I'm done" returns home | Pass |
+| A wrong PIN is refused | Pass |
+| The report shows YouTube time from Android and learning from the app | Pass |
+| No script errors | Pass |
+
+## Android app build
+
+GitHub builds the Android test app on every change to `mobile/` or `extension/` (`.github/workflows/android.yml`). The first build of the Kotlin code passed. **The app has not yet been installed on a real phone.** Usage access, the counting service, opening over YouTube, restart after reboot and battery use are all untested. See the phone checks in mobile/PLAN.md.
+
 ## Bugs found and fixed in this round
-- Typed answers with four or more digits (for example 13,748) were treated as unclear input. Numbers up to a million, commas and minus signs are now understood.
-- A Year 4 coordinates question could ask a point to move off the grid, which left only one option. Moves now stay on the grid.
-- An odd-shape-out question could show two identical shapes. The three matching shapes now always differ in colour.
-- A shape sequence could need a nine-sided shape that had no name in its description. Names now go up to ten sides.
-- A shape analogy could combine two turns, which made the rule unclear. It now uses at most one turn.
+- A reasoning "letters for numbers" question could very rarely fail to find a single right answer, which would have stopped the session. Found by a test that generates many questions. It now always finds one.
+- The first Android workflow file had a YAML error, and the Android SDK setup step failed on GitHub's runner. Both fixed, and the build now uses the runner's own Android SDK.
 
 ## Not tested yet
-- Real YouTube on the 4 GB laptop with version 1.1.0, Windows voices reading the new question types, and memory use.
+- Real YouTube on the 4 GB laptop with version 1.2.0, Windows voices reading the new question types, and memory use.
 - Whether Year 4 to 6 children find the new questions and the shape puzzles clear. That needs families with older children.
 - How the drawings look with Windows display scaling at 125% and 150%.
 - Whether the level rules feel right for real children. That needs the family pilot.
+- The Windows settings files in tools/windows on a real Windows laptop.
+- LearnLoop in Microsoft Edge.
+- The Android app on a real phone.

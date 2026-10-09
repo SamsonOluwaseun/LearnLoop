@@ -2,11 +2,11 @@
 
 **Watch and learn. A free, open-source Chrome extension for families.**
 
-Powered by Samlytics Data Services · Version 1.1 · MIT licence
+Powered by Samlytics Data Services · Version 1.2 · MIT licence
 
-[![Download LearnLoop v1.1](https://img.shields.io/badge/Download-LearnLoop%20v1.1%20for%20Chrome-4392F1?style=for-the-badge)](https://github.com/SamsonOluwaseun/LearnLoop/raw/main/download/LearnLoop-v1.1.0.zip)
+[![Download LearnLoop v1.2](https://img.shields.io/badge/Download-LearnLoop%20v1.2%20for%20Chrome-4392F1?style=for-the-badge)](https://github.com/SamsonOluwaseun/LearnLoop/raw/main/download/LearnLoop-v1.2.0.zip)
 
-**[Download LearnLoop v1.1 (zip)](https://github.com/SamsonOluwaseun/LearnLoop/raw/main/download/LearnLoop-v1.1.0.zip)**, then follow the [setup guide](#install-on-a-windows-laptop-chrome). It takes about five minutes.
+**[Download LearnLoop v1.2 (zip)](https://github.com/SamsonOluwaseun/LearnLoop/raw/main/download/LearnLoop-v1.2.0.zip)**, then follow the [setup guide](#install-on-a-windows-laptop-chrome). It takes about five minutes.
 
 ## Why I built this
 
@@ -19,6 +19,7 @@ LearnLoop is a Google Chrome extension that helps parents:
 - choose how much YouTube time comes before a short learning break, for example 5 minutes of video and then up to 10 minutes of learning
 - give each child Maths and English questions that follow the national curriculum in England, from Reception to Year 6, starting at their school year and getting harder as they succeed
 - switch on Reasoning (11+ practice) for children in Years 4 to 6 who are preparing for a selective secondary school test
+- choose topics to focus on or skip, and add your child's own school spelling list
 - let children practise more whenever they like, including an optional "beat your own best" round that is only ever them against their own score
 - keep learning bounded and kind: children can go back early once they show they understand, wrong answers get help rather than punishment, and the session always ends on time
 - see real progress in a simple report and an optional weekly email
@@ -28,7 +29,7 @@ LearnLoop is a Google Chrome extension that helps parents:
 
 LearnLoop is open source under the MIT licence and free to use. Anyone can read the code, use it at home, and help improve it.
 
-This is version 1.1 of a new product. It works well in our home, but every family is different. If you try it, I would love to hear what worked, what didn't, and what would make it better. Please [open an issue](https://github.com/SamsonOluwaseun/LearnLoop/issues) with your ideas, questions or bug reports, or [message us on LinkedIn](https://www.linkedin.com/in/samlytics-data-service-487a7728a/). Suggestions from parents, teachers and developers are all very welcome.
+This is version 1.2 of a new product. It works well in our home, but every family is different. If you try it, I would love to hear what worked, what didn't, and what would make it better. Please [open an issue](https://github.com/SamsonOluwaseun/LearnLoop/issues) with your ideas, questions or bug reports, or [message us on LinkedIn](https://www.linkedin.com/in/samlytics-data-service-487a7728a/). Suggestions from parents, teachers and developers are all very welcome.
 
 Read [Known limitations](docs/KNOWN-LIMITATIONS.md) before you rely on it. It is a Chrome extension for Windows, and it is a family tool rather than a lock.
 
@@ -56,7 +57,7 @@ Read [Known limitations](docs/KNOWN-LIMITATIONS.md) before you rely on it. It is
 
 You need Windows 10 or 11 and Google Chrome 116 or later.
 
-1. **[Download LearnLoop v1.1 (zip)](https://github.com/SamsonOluwaseun/LearnLoop/raw/main/download/LearnLoop-v1.1.0.zip)**. The download starts straight away.
+1. **[Download LearnLoop v1.2 (zip)](https://github.com/SamsonOluwaseun/LearnLoop/raw/main/download/LearnLoop-v1.2.0.zip)**. The download starts straight away.
 2. Right-click the zip, choose **Extract All**, and extract it to a folder that will stay put, for example `C:\Users\<you>\LearnLoop`. Chrome loads LearnLoop from this folder every time, so don't delete or move it.
 3. Open Chrome and go to `chrome://extensions`.
 4. Turn on **Developer mode** (top right).
@@ -79,6 +80,15 @@ The first time YouTube is opened after Chrome starts, it asks **Who's watching?*
 ### Switch on Reasoning (11+ practice)
 
 For a child in Years 4 to 6, open **Children and rules**, tick **Reasoning (11+ practice, Years 4 to 6)** and press **Save**. Reasoning then takes its turn with Maths and English after each video. You can set its level by hand next to the other subjects.
+
+### Topics and your child's spelling list
+
+In **Children and rules**, open **Topics and spelling list** under a child.
+
+- Set any topic to **Focus** to have it come up first in every session, or **Skip** to leave it out for now. You can also pick a focus topic from another year, for example times tables from Year 3 for a Year 4 child.
+- Type or paste this week's school spellings into **Our spelling list**, separated by commas or spaces (up to 30 words). Once there are at least 3 words, they come up in every English session. Children first pick the right spelling from a few close misspellings, and later hear the word and type it, if typing is allowed.
+
+Press **Save** when you're done. Levels still move up and down from your child's answers.
 
 ### Extra practice and beat your own best
 
@@ -103,6 +113,14 @@ Each child starts at their school year, worked out from their date of birth (Eng
 Answers given after a clue or a worked example never count towards moving up. A birthday on its own never makes the questions harder. You can see every level change and the reason under **Report > Why levels changed**, and you can set the Maths, English or Reasoning level by hand in **Children and rules**.
 
 The full list of skills, the curriculum statement each one follows, and the sources are in [docs/CURRICULUM.md](docs/CURRICULUM.md).
+
+## Close the gaps
+
+LearnLoop is a family tool, not a lock. The **Right now** page has a **Close the gaps** panel that lists the usual ways round it:
+
+- **Incognito windows.** LearnLoop only runs there if you allow it. Go to `chrome://extensions`, click **Details** on LearnLoop and turn on **Allow in Incognito**. The panel shows a warning until you do.
+- **Guest mode and other Chrome profiles.** They don't have LearnLoop. To turn off Guest mode, new profiles and Incognito on this laptop, download [close-the-gaps.reg](tools/windows/close-the-gaps.reg), double-click it and accept the Windows prompts, then restart Chrome. It uses Chrome's own documented settings and applies to every account on the laptop, yours included. [undo-close-the-gaps.reg](tools/windows/undo-close-the-gaps.reg) puts things back. You can check what is set at `chrome://policy`. These files have not yet been tried on our own laptop, so please tell us how they go.
+- **Other browsers.** LearnLoop only sees the browser it's added to. It is built to work in Microsoft Edge too, but it hasn't been tested there yet. Otherwise, give your child their own Windows account with only Chrome and LearnLoop.
 
 ## Opening parent settings later
 
@@ -166,6 +184,10 @@ If you want a copy of the history first, use **Report > Download CSV** before re
 
 Forgot your PIN? Use **I forgot my PIN** on the parent page with your recovery code. If the code is lost too, removing and adding LearnLoop again resets everything.
 
+## Android app (early test version)
+
+LearnLoop is coming to Android phones and tablets. The first test version shares the same questions and rules, and counts the time YouTube or YouTube Kids is on screen. It has not yet been tried on a real phone. See [mobile/README.md](mobile/README.md) for what it does, how to install the test version and the plan for Google Play and iPhone.
+
 ## For developers
 
 ```bash
@@ -174,6 +196,9 @@ node --test tests/*.test.js
 
 # end-to-end test of the real extension in Chromium against a local stand-in video page
 pip install playwright && python3 tests/e2e/run_e2e.py
+
+# the phone app's screens at phone size, with a stand-in for Android
+python3 tests/mobile/run_mobile_web.py
 
 # build the release zip
 bash scripts/build-release.sh
@@ -185,6 +210,8 @@ bash scripts/build-release.sh
 - [Writing questions](docs/CONTENT-AUTHORING.md)
 - [Privacy](docs/PRIVACY.md)
 - [Contributing](CONTRIBUTING.md)
+- [Chrome Web Store submission pack](store/chrome-web-store/LISTING.md)
+- [Android sub-project](mobile/README.md)
 
 ## Licence and brand
 

@@ -61,3 +61,13 @@ There are no dependencies and no bundled runtime. The unpacked extension is abou
 ## Extra practice (version 1.1)
 
 The toolbar button opens `learn.html?practice=1`. The page asks the worker for `practiceStart`, which returns the active child, the subjects switched on, a plan for each subject and the child's own bests. When the child finishes it sends `practiceFinish`, and `recordPractice()` in `core.js` stores the session with `practice: true`, updates skill levels from the answers, and checks the own best. It never touches the runtime state, the video balance or the daily total. A best is set only by a finished 10-question round, the score is answers given without help, and time only breaks a tie (`betterThan()`).
+
+## Topics, spelling list and gaps (version 1.2)
+
+- `planSession()` in `core.js` applies the parent's choices: practise-again first, then focus topics (from any year), then the rest, without skipped topics. Skipping everything is ignored. The child's own spelling list joins every English session as the `my-spellings` skill once it has 3 words.
+- `my-spellings` is the one skill that needs per-child content. `makeQuestion(skill, r, level, ctx)` passes `ctx` (the words and whether the child can type), and `LearningSession` takes it as `config.custom`. Wrong options come from `slips()` in `curriculum.js`, filtered against words LearnLoop knows.
+- The parent page checks `chrome.extension.isAllowedIncognitoAccess()` every 5 seconds for the Close the gaps panel.
+
+## Android app (mobile/)
+
+The phone app reuses the extension's `curriculum*.js`, `reasoning.js`, `engine.js`, `core.js`, `learn.html` and `learn.js` unchanged. `mobile/web/build.js` copies them next to the phone screens. `mobile/web/shim.js` answers the learning screen's messages in place of the background worker. A Kotlin service counts time with the chosen video apps in front, using Android's usage events. See mobile/README.md.

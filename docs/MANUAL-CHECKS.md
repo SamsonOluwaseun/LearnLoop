@@ -34,6 +34,11 @@ Before you start, set the rule to 1 minute of video and 1 to 2 minutes of learni
 | 26 | Toolbar button > Practise > Beat your own best, answer all 10 | "Your first best!" appears, and the best shows in the Report | |
 | 27 | During and after extra practice, check Right now | Video time and the daily total have not changed | |
 | 28 | Type a large answer such as 4,320 | Marked right with or without the comma | |
+| 29 | Add this week's school spellings, start an English session | The words come up first, the voice says the word | |
+| 30 | Set a topic to Skip, another to Focus | Skipped topic never appears, focus topic comes first | |
+| 31 | Allow LearnLoop in Incognito, open YouTube in Incognito | Time is counted. The Close the gaps warning disappears | |
+| 32 | Run close-the-gaps.reg, restart Chrome, open chrome://policy | Incognito, Guest mode and Add person are off. Run the undo file afterwards | |
+| 33 | Load LearnLoop in Microsoft Edge and repeat checks 1 to 10 | Same behaviour as Chrome | |
 
 ## Measuring memory on the 4 GB laptop
 

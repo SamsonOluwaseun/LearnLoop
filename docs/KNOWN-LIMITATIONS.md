@@ -23,6 +23,7 @@ Please read these before relying on LearnLoop.
 - 123 skills: Maths and English from Reception to Year 6, aligned to the national curriculum in England, and Reasoning (11+ practice) for Years 4 to 6.
 - Writing, handwriting and drawing or measuring with a ruler or protractor are not covered. Children in Year 7 and above will find the questions easy.
 - The Reasoning track is general 11+ practice. It does not follow the format of any particular test (for example GL Assessment or CEM) or any area's schools, and it is not a prediction of a test result.
+- Your own spelling list: wrong options are made from common spelling slips (a doubled or single letter, swapped vowels, a dropped silent e and so on). Any slip that matches a word LearnLoop knows is thrown away, but LearnLoop does not have a full dictionary, so very occasionally a wrong option could be a real word. Please tell us if you see one.
 - Each 11+ style skill has a small hand-written word bank (about 4 to 6 items per level for word puzzles), so children will meet the same word puzzles again. Number, letter and shape puzzles are generated, so they vary much more.
 - Shape puzzles are drawn in fixed colours (white, light blue and dark navy) and described in words for screen readers, but a child who cannot see the shapes cannot answer them yet.
 - **Beat your own best** shows the time taken. The score is the number answered without help, and time only breaks a tie. It is only ever compared with the same child's own best.
@@ -32,6 +33,11 @@ Please read these before relying on LearnLoop.
 - The level rules (5 of the last 6 without help across 2 sessions, and so on) are starting points for a family pilot, not proven teaching rules.
 - Picture questions use the Windows emoji font, so pictures look different on other systems.
 - A revised national curriculum is planned from September 2028. The content will need checking against it.
+
+## Ways round it
+- LearnLoop only runs in the Chrome profile where it is added. Incognito windows are covered only if a parent allows it, and the parent page warns until then. Guest mode, other profiles and other browsers are not covered. The Close the gaps panel explains what to do.
+- The Windows settings files in `tools/windows/` use Chrome's documented policies but have not yet been tested on our own laptop. They apply to every account on the computer.
+- LearnLoop is built to work in Microsoft Edge but has not yet been tested there.
 
 ## Reporting
 - Reports are shown on the laptop and can be exported as CSV or as a web page.
