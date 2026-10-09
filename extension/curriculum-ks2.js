@@ -446,6 +446,7 @@
       { word: 'thorough', wrong: ['thurough', 'thorogh'], sentence: 'Give the room a ___ clean.' }, { word: 'twelfth', wrong: ['twelth', 'twelvth'], sentence: 'It is her ___ birthday.' },
       { word: 'vehicle', wrong: ['vehical', 'veicle'], sentence: 'A bus is a large ___.' }, { word: 'yacht', wrong: ['yatch', 'yaught'], sentence: 'The ___ sailed across the bay.' }
     ];
+    if (C.KNOWN) for (const x of [...W4, ...W56]) C.KNOWN.add(x.word.toLowerCase());
     const E = {};
     E['spelling-y4'] = spelling(W4, 'Y4', 'Spelling words (Years 3 and 4 list)', 'Y4 Spelling: words from the statutory years 3 and 4 word list');
     E['spelling-y5'] = spelling(W56.slice(0, 26), 'Y5', 'Spelling words (Years 5 and 6 list, part 1)', 'Y5 Spelling: words from the statutory years 5 and 6 word list');

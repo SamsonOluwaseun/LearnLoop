@@ -122,8 +122,27 @@
       const sa = nowMs - la > WEEK ? 0 : 1, sb = nowMs - lb > WEEK ? 0 : 1;
       return sa - sb || la - lb;
     });
-    const list = [...new Set([...revision, ...order])];
-    return list.map(skill => ({ skill, level: (sk[skill] && sk[skill].level) || 1 }));
+    // Parent choices: skipped topics are left out (unless that would leave nothing), focus topics come straight after practise-again,
+    // and the child's own spelling list joins every English session once it has at least 3 words.
+    const skip = new Set(((child.skip || {})[subject] || []).filter(k => C.SKILLS[k]));
+    const focus = ((child.focus || {})[subject] || []).filter(k => C.SKILLS[k] && C.SKILLS[k].subject === subject && !skip.has(k));
+    if (subject === 'english' && (child.spellings || []).length >= 3 && !skip.has('my-spellings')) focus.unshift('my-spellings');
+    let list = [...new Set([...revision, ...focus, ...order])];
+    const kept = list.filter(k => !skip.has(k));
+    if (kept.length) list = kept;
+    return list.filter(k => k !== 'my-spellings' || (child.spellings || []).length >= 3).map(skill => ({ skill, level: (sk[skill] && sk[skill].level) || 1 }));
+  }
+  // A parent types or pastes the words, separated by commas, spaces or new lines. Letters, apostrophes and hyphens only.
+  const MAX_SPELLINGS = 30;
+  function cleanSpellings(text) {
+    const seen = new Set(), out = [], rejected = [];
+    for (const raw of String(text || '').split(/[\s,;]+/)) {
+      const w = raw.trim().replace(/[.!?]+$/, ''); if (!w) continue;
+      if (!/^[A-Za-z][A-Za-z'’-]{1,19}$/.test(w)) { rejected.push(w); continue; }
+      const k = w.toLowerCase(); if (seen.has(k)) continue; seen.add(k);
+      if (out.length < MAX_SPELLINGS) out.push(w); else rejected.push(w);
+    }
+    return { words: out, rejected };
   }
   function setStage(db, child, subject, year, nowMs) {
     ensureChildModel(child, dayKey(nowMs)); if (!yearsFor(subject).includes(year) || child.stage[subject] === year) return;
@@ -364,10 +383,13 @@
     const child = db.children.find(c => c.id === childId);
     if (!child || !SUBJECTS.includes(p.subject) || !child.subjects[p.subject]) return null;
     const attempts = (p.attempts || []).filter(a => CUR().SKILLS[a.skill] && CUR().SKILLS[a.skill].subject === p.subject).slice(0, 200);
-    const sec = Math.max(0, Math.min(Math.round(+p.learningSec || 0), ((child.rules.practiceMax || DEFAULT_RULES.practiceMax) * 60) + 30));
+    // The phone app records its learning sessions through here too (practice: false). They are capped at the learning maximum.
+    const isPractice = p.practice !== false;
+    const capMin = isPractice ? (child.rules.practiceMax || DEFAULT_RULES.practiceMax) : (child.rules.max || DEFAULT_RULES.max);
+    const sec = Math.max(0, Math.min(Math.round(+p.learningSec || 0), capMin * 60 + 30));
     const ind = attempts.filter(a => a.correct && a.support === 'none').length, sup = attempts.filter(a => a.correct && a.support !== 'none').length;
     const revisit = [...new Set((p.revisit || []).filter(k => CUR().SKILLS[k]))];
-    db.sessions.push({ childId, subject: p.subject, startedAt: nowMs - sec * 1000, endedAt: nowMs, reason: p.challenge ? 'challenge' : 'practice', practice: true,
+    db.sessions.push({ childId, subject: p.subject, startedAt: nowMs - sec * 1000, endedAt: nowMs, reason: isPractice ? (p.challenge ? 'challenge' : 'practice') : (['mastery', 'time_limit', 'stopped'].includes(p.reason) ? p.reason : 'time_limit'), practice: isPractice,
       learningSec: sec, ind, sup, incorrect: attempts.filter(a => !a.correct).length, revisit, skills: [...new Set(attempts.map(a => a.skill))] });
     if (db.sessions.length > MAX_SESSIONS) db.sessions.splice(0, db.sessions.length - MAX_SESSIONS);
     for (const a of attempts) { const s = skillRec(db, childId, a.skill); s.attempts++; s.last = nowMs; if (!a.correct) s.incorrect++; else if (a.support === 'none') s.independent++; else s.supported++; }
@@ -376,7 +398,7 @@
     const changes = updateProgress(db, child, p.subject, attempts, 'practice:' + nowMs, nowMs);
     db.sessions[db.sessions.length - 1].changes = changes.map(c => c.reason);
     let out = { changes: changes.map(c => c.reason) };
-    if (p.challenge && attempts.length) {
+    if (isPractice && p.challenge && attempts.length) {
       // the score is the questions answered by themselves in the round, so a guessed or helped answer never inflates it
       const round = { score: Math.min(ind, CHALLENGE_QUESTIONS), of: CHALLENGE_QUESTIONS, sec, at: nowMs, year: child.stage[p.subject] };
       db.best = db.best || {}; const b = db.best[childId] = db.best[childId] || {};
@@ -439,7 +461,7 @@
   function markSent(db, key, nowMs) { const o = (db.outbox || []).find(x => x.key === key); if (o) { o.status = 'sent'; o.sentAt = nowMs; } return !!o; }
 
   const api = { SCHEMA, DEFAULT_RULES, dayKey, emptyDb, newChild, runtimeFor, applyHeartbeat, beginLearning, saveProgress, finishLearning,
-    parentOverride, recover, hashSecret, newChildModel: ensureChildModel, ensureChildModel, startYearFrom, updateProgress, planSession, setStage, recordPractice, betterThan, CHALLENGE_QUESTIONS, YEARS, SUBJECTS, REASONING_YEARS, yearsFor, setParentPin, checkPin, checkRecovery, validPin, report, csv, MAX_HEARTBEAT_SEC,
+    parentOverride, recover, hashSecret, newChildModel: ensureChildModel, ensureChildModel, startYearFrom, updateProgress, planSession, cleanSpellings, MAX_SPELLINGS, setStage, recordPractice, betterThan, CHALLENGE_QUESTIONS, YEARS, SUBJECTS, REASONING_YEARS, yearsFor, setParentPin, checkPin, checkRecovery, validPin, report, csv, MAX_HEARTBEAT_SEC,
     REASONS, beatReason, DAY_NAMES, validEmail, weekPeriod, weeklyData, weeklyText, queueWeekly, markSent };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.LLCore = api;
 })(typeof window !== 'undefined' ? window : globalThis);

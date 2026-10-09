@@ -19,6 +19,8 @@
     if (b && Date.now() - b.at < 20000) d.textContent = REASONS[b.reason] || b.reason;
     else d.textContent = 'No signal from YouTube right now. If a YouTube tab is playing, reload it once (F5).';
   }
+  // a gentle reminder when Incognito windows are not covered
+  try { if (st.configured && !(await chrome.extension.isAllowedIncognitoAccess())) { const t = document.createElement('p'); t.className = 'note'; t.style.margin = '0'; t.textContent = 'Tip: Incognito windows are not covered. See Close the gaps in parent settings.'; document.getElementById('d').after(t); } } catch (e) {}
   document.getElementById('open').onclick = () => chrome.runtime.openOptionsPage();
   // Practice is for the child who is using LearnLoop now. It never adds or uses video time.
   const p = document.getElementById('practise');

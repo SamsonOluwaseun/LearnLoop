@@ -15,6 +15,12 @@
   const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   const FIRST_BIRTH_YEAR = 1988;
 
+  // Incognito windows only run LearnLoop if a parent allows it. Checked each time the page draws.
+  let incognitoOk = null;
+  const checkIncognito = async () => { try { incognitoOk = await chrome.extension.isAllowedIncognitoAccess(); } catch (e) { incognitoOk = null; } };
+  await checkIncognito();
+  setInterval(checkIncognito, 5000);
+
   // ---------- entry ----------
   const fresh = await chrome.storage.local.get('db');
   if (!fresh.db || !fresh.db.parent) firstRun(); else lockScreen();
@@ -130,11 +136,29 @@
       ${!s.done && s.btn ? `<button class="btn small" data-goto="${s.btn[0]}">${esc(s.btn[1])}</button>` : ''}${!s.done && s.link ? `<a class="btn small" style="text-decoration:none;display:inline-block" href="${s.link[0]}" target="_blank" rel="noopener">${esc(s.link[1])}</a>` : ''}</div></li>`).join('')}</ol></div>`;
   }
 
+  // Honest list of the ways round LearnLoop, and what a parent can do about each one
+  function gapsPanel() {
+    if (!db.children.length) return '';
+    const items = [
+      { ok: incognitoOk === true, id: 'incognito', title: incognitoOk === true ? 'Incognito windows are covered' : 'Incognito windows are not covered yet',
+        text: incognitoOk === true ? 'LearnLoop also measures YouTube in Incognito windows.' : 'In an Incognito window LearnLoop does not run, so video there is not counted. To fix it: type chrome://extensions in the address bar, click Details on LearnLoop, and turn on "Allow in Incognito". Or turn Incognito off for the whole laptop (see below).' },
+      { ok: null, id: 'profiles', title: 'Other Chrome profiles and Guest mode',
+        text: 'LearnLoop runs only in the Chrome profile where you added it. A Guest window or another profile has no LearnLoop. You can turn off Guest mode, new profiles and Incognito for this laptop with the LearnLoop Windows settings file. See "Close the gaps" in the README.' },
+      { ok: null, id: 'browsers', title: 'Other browsers such as Edge or Firefox',
+        text: 'LearnLoop only sees the browser it is added to. It is built to work in Microsoft Edge as well, but it has not been tested there yet. If your child has another browser, add LearnLoop to it, remove it from their Windows account, or give them their own Windows account with only Chrome and LearnLoop.' }
+    ];
+    const open = items.filter(x => x.ok === false).length;
+    return `<details class="panel gaps" ${open ? 'open' : ''}><summary><b>Close the gaps</b> <span class="note">${open ? `${open} thing${open === 1 ? '' : 's'} to fix` : 'nothing urgent'}</span></summary>
+      <p class="note" style="margin:0">LearnLoop is a family tool, not a lock. These are the usual ways round it, and what you can do.</p>
+      <ul class="gaplist">${items.map(x => `<li data-gap="${x.id}"><span class="tick ${x.ok === false ? 'warn' : x.ok ? 'done' : ''}" aria-hidden="true">${x.ok === false ? '!' : x.ok ? '✓' : 'i'}</span><div><b>${esc(x.title)}</b><p class="note" style="margin:2px 0 0">${esc(x.text)}</p></div></li>`).join('')}</ul></details>`;
+  }
+
   function showNow() {
     rendered = 'now';
     const paused = Date.now() < (db.monitoringPausedUntil || 0);
     main.innerHTML = `<div class="stack">
       ${setupSteps()}
+      ${gapsPanel()}
       <div class="panel"><h3>Who is using this laptop?</h3>
         <div class="who" id="who">${db.children.map(c => `<button aria-pressed="${c.id === db.activeChildId}" data-k="${esc(c.id)}"><b>${esc(c.name)}</b><small>${c.id === db.activeChildId ? 'Chosen now' : 'Tap to choose'}</small></button>`).join('')}</div>
         <p class="note">When Chrome starts, YouTube asks who is watching. Switching to another child afterwards needs your PIN.</p></div>
@@ -325,6 +349,7 @@
         <div class="checks"><label><input type="checkbox" data-i="${i}" data-s="maths" ${c.subjects.maths ? 'checked' : ''}> Maths</label><label><input type="checkbox" data-i="${i}" data-s="english" ${c.subjects.english ? 'checked' : ''}> English</label><label><input type="checkbox" data-i="${i}" data-s="reasoning" ${c.subjects.reasoning ? 'checked' : ''}> Reasoning (11+ practice, Years 4 to 6)</label>
           <label><input type="checkbox" data-i="${i}" data-k="readAloud" ${c.readAloud ? 'checked' : ''}> Read questions aloud</label><label><input type="checkbox" data-i="${i}" data-k="typing" ${c.typing ? 'checked' : ''}> Allow typed answers</label></div>
         ${ruleFields(c, i)}
+        ${topicsField(c, i)}
         <p class="note" style="margin:0">${summaryLine(c)}</p>
         ${draft.length > 1 ? `<div class="actions"><button class="btn small ghost" data-del="${i}">Remove ${esc(c.name || 'this child')}</button></div>` : ''}
       </div>`).join('')}
@@ -348,7 +373,24 @@
     });
     main.querySelectorAll('[data-stage]').forEach(el => el.onchange = () => { const c = draft[el.dataset.i]; C.ensureChildModel(c, today()).stage[el.dataset.stage] = el.value; rerender(); });
     main.querySelectorAll('[data-bclear]').forEach(b => b.onclick = () => { const c = draft[b.dataset.bclear]; c.birthday = null; c._bd = null; c._bdErr = null; rerender(); });
-    main.querySelectorAll('[data-s]').forEach(el => el.onchange = () => { draft[el.dataset.i].subjects[el.dataset.s] = el.checked; });
+    main.querySelectorAll('[data-s]').forEach(el => el.onchange = () => { draft[el.dataset.i].subjects[el.dataset.s] = el.checked; rerender(); });
+    // topics: include, focus or skip, and the child's own spelling list
+    main.querySelectorAll('[data-topic]').forEach(el => el.onchange = () => {
+      const c = draft[el.dataset.i]; const [sub, skill] = el.dataset.topic.split('|');
+      c.focus = c.focus || {}; c.skip = c.skip || {};
+      c.focus[sub] = (c.focus[sub] || []).filter(k => k !== skill); c.skip[sub] = (c.skip[sub] || []).filter(k => k !== skill);
+      if (el.value === 'focus') c.focus[sub].push(skill); if (el.value === 'skip') c.skip[sub].push(skill);
+      rerender();
+    });
+    main.querySelectorAll('[data-addfocus]').forEach(el => el.onchange = () => {
+      if (!el.value) return; const c = draft[el.dataset.i], sub = el.dataset.addfocus; c.focus = c.focus || {};
+      c.focus[sub] = [...new Set([...(c.focus[sub] || []), el.value])]; if (c.skip && c.skip[sub]) c.skip[sub] = c.skip[sub].filter(k => k !== el.value); rerender();
+    });
+    main.querySelectorAll('[data-unfocus]').forEach(b => b.onclick = () => { const c = draft[b.dataset.i]; const [sub, skill] = b.dataset.unfocus.split('|'); c.focus[sub] = c.focus[sub].filter(k => k !== skill); rerender(); });
+    main.querySelectorAll('[data-sp]').forEach(el => el.onchange = () => {
+      const c = draft[el.dataset.i]; const res = C.cleanSpellings(el.value); c.spellings = res.words; c._spRejected = res.rejected; c._topicsOpen = true; rerender();
+    });
+    main.querySelectorAll('details.topics').forEach(d => d.ontoggle = () => { draft[d.dataset.i]._topicsOpen = d.open; });
     main.querySelectorAll('[data-r]').forEach(el => el.onchange = () => {
       const c = draft[el.dataset.i]; const k = el.dataset.r;
       if (k === 'mode') c.rules.mode = el.value;
@@ -364,7 +406,7 @@
       if (draft.some(c => !c.name || !c.name.trim())) { $('msg').textContent = 'Give each child a name.'; return; }
       if (draft.some(c => !C.SUBJECTS.some(sj => c.subjects[sj]))) { $('msg').textContent = 'Choose at least one subject for each child.'; return; }
       if (draft.some(c => c._bdErr)) { $('msg').textContent = 'Fix the birthday first.'; return; }
-      const res = await parent('saveChildren', { children: draft.map(({ _bd, _bdErr, ...c }) => c) });
+      const res = await parent('saveChildren', { children: draft.map(({ _bd, _bdErr, _spRejected, _topicsOpen, ...c }) => c) });
       if (!res.ok) { $('msg').textContent = 'Could not save.'; return; }
       draft = null; $('tabs').hidden = false;
       if (firstTime) show('now'); else { editChildren(false); $('msg').textContent = 'Saved.'; }
@@ -392,6 +434,32 @@
       </div>
       ${c._bdErr ? `<span class="err">${esc(c._bdErr)}</span>` : age !== null ? `<span class="note" style="font-weight:500">Age ${age}, ${esc(L.CUR.schoolYearFor(c.birthday, today()).label)}. Questions start at ${esc(L.CUR.YEAR_LABEL[C.startYearFrom(c.birthday, today())])} level.${L.CUR.schoolYearFor(c.birthday, today()).index > 6 ? ' LearnLoop goes up to Year 6, so questions may feel easy.' : ''}${L.CUR.schoolYearFor(c.birthday, today()).index < 0 ? ' Not at school yet, so questions start at Reception level.' : ''}</span>` : ''}
     </div>`;
+  }
+  // Parents choose topics to focus on or skip, and add the child's own spelling words
+  function topicsField(c, i) {
+    C.ensureChildModel(c, today()); const focus = c.focus || {}, skip = c.skip || {};
+    const subs = C.SUBJECTS.filter(sj => c.subjects[sj]);
+    const counts = subs.map(sj => (focus[sj] || []).length + (skip[sj] || []).length).reduce((a, b) => a + b, 0);
+    const words = c.spellings || [];
+    const table = (sj) => {
+      const year = c.stage[sj]; const here = L.CUR.skillsIn(sj, year);
+      const others = C.yearsFor(sj).filter(y => y !== year).flatMap(y => L.CUR.skillsIn(sj, y).map(k => ({ k, y })));
+      const extra = (focus[sj] || []).filter(k => !here.includes(k) && L.SKILLS[k]);
+      return `<div class="topicbox"><b>${SUBJ[sj]}, ${esc(L.CUR.YEAR_LABEL[year])}</b>
+        <div class="tablewrap"><table><tbody>${here.map(k => { const v = (focus[sj] || []).includes(k) ? 'focus' : (skip[sj] || []).includes(k) ? 'skip' : 'include';
+          return `<tr><td>${esc(L.SKILLS[k].label)}</td><td><select data-i="${i}" data-topic="${sj}|${k}" aria-label="${esc(L.SKILLS[k].label)}"><option value="include" ${v === 'include' ? 'selected' : ''}>Include</option><option value="focus" ${v === 'focus' ? 'selected' : ''}>Focus</option><option value="skip" ${v === 'skip' ? 'selected' : ''}>Skip</option></select></td></tr>`; }).join('')}
+        ${extra.map(k => `<tr><td>${esc(L.SKILLS[k].label)} <span class="note">(${esc(L.CUR.YEAR_LABEL[L.SKILLS[k].year])})</span></td><td><span class="pill mastery">Focus</span> <button class="btn small ghost" data-i="${i}" data-unfocus="${sj}|${k}">Remove</button></td></tr>`).join('')}
+        </tbody></table></div>
+        <label class="field"><span>Also focus on a topic from another year</span><select data-i="${i}" data-addfocus="${sj}"><option value="">Choose a topic…</option>${others.filter(o => !extra.includes(o.k)).map(o => `<option value="${o.k}">${esc(L.CUR.YEAR_LABEL[o.y])}: ${esc(L.SKILLS[o.k].label)}</option>`).join('')}</select></label></div>`;
+    };
+    return `<details class="topics" data-i="${i}" ${c._topicsOpen ? 'open' : ''}><summary><b>Topics and spelling list</b> <span class="note">${counts ? `${counts} topic choice${counts === 1 ? '' : 's'}` : 'all topics included'}${words.length ? `, ${words.length} spelling word${words.length === 1 ? '' : 's'}` : ''}</span></summary>
+      <p class="note" style="margin:0">Focus topics come up first in every session. Skipped topics are left out until you include them again. LearnLoop still moves levels up and down from your child's answers.</p>
+      ${c.subjects.english ? `<label class="field"><span>Our spelling list (for example this week's school spellings). Separate words with commas or spaces, up to ${C.MAX_SPELLINGS} words.</span>
+        <textarea data-i="${i}" data-sp rows="2" placeholder="because, friend, Monday, enough">${esc(words.join(', '))}</textarea></label>
+        ${c._spRejected && c._spRejected.length ? `<span class="err">Not added: ${esc(c._spRejected.slice(0, 8).join(', '))}. Use single words with letters only.</span>` : ''}
+        <p class="note" style="margin:0">${words.length >= 3 ? 'These words come up in every English session. Children pick the right spelling, and later hear the word and type it if typing is allowed.' : 'Add at least 3 words to start.'}</p>` : ''}
+      ${subs.map(table).join('')}
+    </details>`;
   }
   function summaryLine(c) {
     const R = c.rules; const subs = C.SUBJECTS.filter(s => c.subjects[s]).map(s => SUBJ[s]).join(' and ').replace(/ and (?=.* and )/, ', ') || 'no subjects yet';

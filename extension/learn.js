@@ -19,6 +19,8 @@
     if (!child || !child.readAloud || !text) return;
     try { chrome.tts.speak(text, { lang: 'en-GB', rate: 0.9, enqueue: false }); } catch (e) {}
   }
+  // Spelling questions must be heard, so they are spoken even when read-aloud is off
+  function sayQ(q) { if (!q) return; if (q.listen) speakAlways(q.speak); else speak(q.speak); }
   function speakAlways(text) { try { chrome.tts.speak(text, { lang: 'en-GB', rate: 0.9, enqueue: false }); return true; } catch (e) { return false; } }
 
   const POWERED = `<div class="foot-powered"><img src="brand/samlytics-mark.png" alt="">Powered by Samlytics Data Services</div>`;
@@ -42,7 +44,7 @@
   R = child.rules;
   session = new L.LearningSession({
     subject, band: child.band, plan: start.plan, seed: Math.floor(Math.random() * 1e9), revision: start.revision || [],
-    config: { minSec: Math.max(0, R.min * 60 - offset.elapsed), maxSec: Math.max(30, R.max * 60 - offset.elapsed),
+    config: { custom: { words: child.spellings || [], typing: !!child.typing }, minSec: Math.max(0, R.min * 60 - offset.elapsed), maxSec: Math.max(30, R.max * 60 - offset.elapsed),
       tasks: R.tasks, masteryTarget: Math.max(1, R.mastery - offset.independent) }
   });
   onBreak = runtime.state === 'break';
@@ -79,7 +81,7 @@
       subject = b.dataset.sub; const challenge = document.getElementById('challenge').checked;
       practice = { challenge, max: st.practiceMax, roundSize: st.roundSize, best: st.best[subject] || null };
       session = new L.LearningSession({ subject, band: child.band, plan: st.plans[subject], seed: Math.floor(Math.random() * 1e9), revision: st.revision[subject] || [],
-        config: { minSec: 0, maxSec: st.practiceMax * 60, tasks: challenge ? st.roundSize : Math.max(5, R.tasks), masteryTarget: Infinity } });
+        config: { custom: { words: child.spellings || [], typing: !!child.typing }, minSec: 0, maxSec: st.practiceMax * 60, tasks: challenge ? st.roundSize : Math.max(5, R.tasks), masteryTarget: Infinity } });
       renderShell(); startClock();
     });
   }
@@ -96,7 +98,7 @@
     f.querySelector('[data-a=alt]').onclick = () => { if (ui.locked) return; const a = session.anotherWay(); if (!a) return; ui.alt = a; ui.feedback = { cls: 'hint', t: 'Here is another way to look at it.' }; render(); speak(ui.feedback.t); };
     if (PRACTICE) f.querySelector('[data-a=done]').onclick = () => { if (!ui.locked) { session._finish('stopped'); finish(); } };
     else f.querySelector('[data-a=break]').onclick = () => { onBreak = true; saveProgress(); send({ type: 'learnBreak', on: true }); showBreak(); };
-    render(); speak(session.current && session.current.speak);
+    render(); sayQ(session.current);
   }
 
   const COIN = (p) => p >= 100 ? `£${p / 100}` : `${p}p`;
@@ -142,17 +144,19 @@
     box.querySelector('.stars').innerHTML = PRACTICE && !practice.challenge ? `<span class="note">${have} by yourself so far</span>`
       : Array.from({ length: need }, (_, i) => `<i class="${i < have ? 'on' : ''}"></i>`).join('') + `<span class="note" style="margin-left:6px">${have} of ${need} by yourself</span>`;
     const isPic = q.response === 'picture';
-    const typed = q.response === 'choice-or-type' && child.typing;
+    const typeOnly = q.response === 'type' && child.typing && !ui.alt; // spelling from memory: "Try another way" shows the choices
+    const typed = (q.response === 'choice-or-type' || typeOnly) && child.typing;
+    const textAnswer = typeof q.answer === 'string';
     box.querySelector('.lbody').innerHTML = `
       ${q.transfer ? '<span class="tag">A new kind of question</span>' : ''}
       <span class="note">${esc((L.CUR.YEAR_LABEL[q.year] || '') + ' · ' + (L.SKILLS[q.skill] ? L.SKILLS[q.skill].label : ''))} · level ${q.difficulty}</span>
       <div class="prompt">${esc(q.prompt)}</div>
-      ${child.readAloud ? '<button class="speakbtn" id="spk" aria-label="Read the question again">🔊</button>' : ''}
+      ${child.readAloud || q.listen ? `<button class="speakbtn${q.listen ? ' big' : ''}" id="spk" aria-label="Hear the word again">🔊</button>` : ''}
       ${renderVisual(ui.alt || q.visual)}
-      <div class="choices">${q.choices.map(c => c.svg
+      ${typeOnly ? '' : `<div class="choices">${q.choices.map(c => c.svg
         ? `<button class="choice svgc ${ui.choiceState[c.value] || ''}" data-v="${esc(c.value)}" aria-label="${esc(c.alt || c.label)}"><span class="opt">${esc(c.label)}</span>${c.svg}</button>`
-        : `<button class="choice ${isPic ? 'pic' : String(c.label).length > 6 ? 'text' : ''} ${ui.choiceState[c.value] || ''}" data-v="${esc(c.value)}" aria-label="${esc(c.alt || c.label)}">${esc(c.label)}</button>`).join('')}</div>
-      ${typed ? `<div class="typed"><label for="typedIn">Or type it</label><input id="typedIn" inputmode="numeric" autocomplete="off"><button class="btn small ghost" id="typedGo">Check</button></div>` : ''}
+        : `<button class="choice ${isPic ? 'pic' : String(c.label).length > 6 ? 'text' : ''} ${ui.choiceState[c.value] || ''}" data-v="${esc(c.value)}" aria-label="${esc(c.alt || c.label)}">${esc(c.label)}</button>`).join('')}</div>`}
+      ${typed ? `<div class="typed"><label for="typedIn">${typeOnly ? 'Type the word' : 'Or type it'}</label><input id="typedIn" inputmode="${textAnswer ? 'text' : 'numeric'}" autocomplete="off" autocapitalize="off" spellcheck="false"><button class="btn small ghost" id="typedGo">Check</button></div>` : ''}
       <div class="feedback ${ui.feedback ? ui.feedback.cls : ''}" role="status">${ui.feedback ? esc(ui.feedback.t) : ''}</div>`;
     box.querySelectorAll('.choice').forEach(b => b.onclick = () => { const v = b.dataset.v; choose(q.grading === 'number-exact' ? Number(v) : v); });
     const spk = document.getElementById('spk'); if (spk) spk.onclick = () => speakAlways(q.speak);
@@ -170,7 +174,7 @@
     setTimeout(() => {
       ui.locked = false; ui.feedback = null; ui.choiceState = {}; ui.alt = null;
       if (roundDone()) session._finish('round_done');
-      if (session.done) finish(); else { render(); speak(session.current.speak); }
+      if (session.done) finish(); else { render(); sayQ(session.current); }
     }, ms);
   }
   function choose(value) {

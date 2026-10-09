@@ -185,13 +185,16 @@
             worked: `${w.split('').map(ch => `${ch} = ${idx(ch) + 1}`).join(', ')}. ${w.split('').map(ch => idx(ch) + 1).join(' + ')} = ${ans}.` };
         }
         // Five letters with different values. Work out a sum and give the answer as a letter.
-        for (let guard = 0; guard < 100; guard++) {
+        for (let guard = 0; guard < 500; guard++) {
           const vals = shuffle(r, Lv === 2 ? [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] : [2, 3, 4, 5, 6, 8, 9, 10, 12, 15, 18, 20]).slice(0, 5);
           const map = { A: vals[0], B: vals[1], C: vals[2], D: vals[3], E: vals[4] }; const ks = Object.keys(map);
-          const [x, y] = shuffle(r, ks).slice(0, 2); let expr, v;
+          const [x, y] = shuffle(r, ks).slice(0, 2); let expr, v; const used = [x, y];
           if (Lv === 2) { if (r() < 0.5) { expr = `${x} + ${y}`; v = map[x] + map[y]; } else { expr = `${x} − ${y}`; v = map[x] - map[y]; } }
-          else { const z = shuffle(r, ks.filter(k => k !== x && k !== y))[0]; if (r() < 0.5) { expr = `${x} × ${y} − ${z}`; v = map[x] * map[y] - map[z]; } else { expr = `(${x} + ${y}) ÷ ${z}`; v = (map[x] + map[y]) / map[z]; } }
-          const hits = ks.filter(k => map[k] === v); if (hits.length !== 1) continue;
+          else { const z = shuffle(r, ks.filter(k => k !== x && k !== y))[0]; used.push(z); if (r() < 0.5) { expr = `${x} × ${y} − ${z}`; v = map[x] * map[y] - map[z]; } else { expr = `(${x} + ${y}) ÷ ${z}`; v = (map[x] + map[y]) / map[z]; } }
+          let hits = ks.filter(k => map[k] === v);
+          // no letter has the answer yet: give it to a letter the sum does not use, as long as the values stay different
+          if (!hits.length && Number.isInteger(v) && v > 0 && v <= 40) { const free = shuffle(r, ks.filter(k => !used.includes(k)))[0]; map[free] = v; hits = ks.filter(k => map[k] === v); }
+          if (hits.length !== 1 || new Set(Object.values(map)).size !== 5) continue;
           const ans = hits[0]; const list = ks.map(k => `${k} = ${map[k]}`).join(', ');
           return { variant: `lsym:${list}:${expr}`, prompt: `${list}. What is ${expr}? Give your answer as a letter.`, speak: `${ks.map(k => `${k} is ${map[k]}`).join(', ')}. What is ${expr.replace('×', 'times').replace('−', 'take away').replace('÷', 'divided by').replace('+', 'add')}? Answer with a letter.`, response: 'choice', visual: { kind: 'sentence', text: list },
             answer: ans, choices: strChoices(r, ans, shuffle(r, ks.filter(k => k !== ans)).slice(0, 3)), hint: 'Swap each letter for its number, work out the answer, then find which letter has that number.',

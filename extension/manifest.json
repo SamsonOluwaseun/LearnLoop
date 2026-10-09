@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "LearnLoop",
   "short_name": "LearnLoop",
-  "version": "1.1.0",
-  "description": "Turns some YouTube time into short, friendly Maths and English practice. Offline and free. Powered by Samlytics Data Services.",
+  "version": "1.2.0",
+  "description": "Turns some YouTube time into short, kind Maths, English and 11+ practice for primary children. Free, offline and private.",
   "minimum_chrome_version": "116",
   "icons": {
     "16": "icons/16.png",

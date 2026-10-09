@@ -6,13 +6,15 @@ const CUR = require('../extension/curriculum.js');
 
 const SEEDS = 150;
 const ids = Object.keys(CUR.SKILLS);
-const each = (id, fn) => { for (let lv = 1; lv <= 3; lv++) for (let seed = 1; seed <= SEEDS; seed++) fn(E.makeQuestion(id, E.rng(seed * 7919 + lv), lv), lv, seed); };
+// The own spelling list needs a child's words. Use a synthetic list that includes short and capitalised words.
+const OWN = { words: ['because', 'friend', 'Monday', 'enough', 'island', 'beautiful', 'is', 'queue', "don't", 'well-known'], typing: true };
+const each = (id, fn) => { for (let lv = 1; lv <= 3; lv++) for (let seed = 1; seed <= SEEDS; seed++) fn(E.makeQuestion(id, E.rng(seed * 7919 + lv), lv, id === 'my-spellings' ? OWN : null), lv, seed); };
 
 test('the bank covers Reception to Year 6 in Maths and English, and Years 4 to 6 in Reasoning', () => {
   for (const y of CUR.YEARS) { assert.ok(CUR.skillsIn('maths', y).length >= 4, `maths ${y}`); assert.ok(CUR.skillsIn('english', y).length >= 4, `english ${y}`); }
   for (const y of ['Y4', 'Y5', 'Y6']) assert.ok(CUR.skillsIn('reasoning', y).length >= 4, `reasoning ${y}`);
   for (const y of ['R', 'Y1', 'Y2', 'Y3']) assert.equal(CUR.skillsIn('reasoning', y).length, 0);
-  for (const id of ids) { const s = CUR.SKILLS[id]; assert.ok(['maths', 'english', 'reasoning'].includes(s.subject), id); assert.ok(CUR.YEARS.includes(s.year), id); assert.ok(s.label && s.nc, id); }
+  for (const id of ids) { const s = CUR.SKILLS[id]; assert.ok(['maths', 'english', 'reasoning'].includes(s.subject), id); assert.ok(CUR.YEARS.includes(s.year) || (id === 'my-spellings' && s.year === 'own'), id); assert.ok(s.label && s.nc, id); }
 });
 
 test('every question has exactly one right answer, distinct options, a clue and a worked example', () => {
@@ -131,4 +133,21 @@ test('letter codes move every letter the same way', () => {
     const enc = (w) => w.split('').map(ch => String.fromCharCode(mirror ? 155 - ch.charCodeAt(0) : ch.charCodeAt(0) + k)).join('');
     assert.equal(enc(w1), c1); assert.equal(enc(w2), q.answer);
   });
+});
+
+test('own spelling list: the right spelling is offered once, wrong options are real slips and never another listed word', () => {
+  each('my-spellings', (q, lv) => {
+    const wrong = q.choices.filter(c => c.value !== q.answer).map(c => c.value.toLowerCase());
+    assert.ok(wrong.length >= 1);
+    for (const w of wrong) {
+      assert.ok(!OWN.words.map(x => x.toLowerCase()).includes(w), `${w} is on the list`);
+      assert.ok(!CUR.KNOWN.has(w), `${w} is a real word LearnLoop knows`);
+    }
+    if (lv === 3) assert.equal(q.response, 'type'); else assert.equal(q.response, 'choice');
+    assert.equal(E.grade(q, q.answer.toUpperCase()).status, 'correct', 'typed spelling ignores capitals');
+    assert.equal(E.grade(q, q.answer + 'x').status, 'incorrect');
+  });
+  const noTyping = E.makeQuestion('my-spellings', E.rng(5), 3, { words: ['because', 'friend', 'enough'], typing: false });
+  assert.equal(noTyping.response, 'choice', 'children who cannot type get choices instead');
+  assert.throws(() => E.makeQuestion('my-spellings', E.rng(5), 1, {}), /word list/);
 });

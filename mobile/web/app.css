@@ -1,0 +1,31 @@
+/* Phone layout on top of the shared LearnLoop styles */
+.phone{max-width:640px;padding-top:max(12px,env(safe-area-inset-top))}
+.phone .top{flex-direction:column;align-items:stretch}
+.phone .tabs{margin-left:0;overflow-x:auto}
+.phone .tabs button{flex:1;white-space:nowrap}
+.stack{display:grid;gap:14px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;display:grid;gap:10px}
+.panel h2,.panel h3{margin:0}
+.big{font-size:20px}
+.hello{text-align:center;display:grid;gap:12px;justify-items:center;padding:24px 16px}
+.hello h2{font-size:30px}
+.btn.block{width:100%;padding:16px;font-size:18px}
+.check{display:flex;gap:10px;align-items:flex-start}
+.check .dot{flex:0 0 28px;height:28px;border-radius:50%;display:grid;place-items:center;font-weight:800;background:var(--rose-soft);color:var(--rose)}
+.check.done .dot{background:var(--leaf-soft);color:var(--leaf)}
+.check p{margin:2px 0 6px}
+input,select,textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--surface);color:var(--ink);font:inherit}
+input[type=checkbox]{width:auto}
+.checks{display:flex;flex-wrap:wrap;gap:8px 16px}
+.checks label{display:flex;gap:6px;align-items:center}
+.field{display:grid;gap:4px}
+.field>span{font-weight:700;font-size:14px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.code{font-family:Consolas,monospace;font-size:24px;letter-spacing:.12em;background:var(--accent-soft);padding:10px 16px;border-radius:12px;text-align:center}
+.err{color:var(--rose);font-weight:700}
+.ok{color:var(--leaf);font-weight:700}
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.kpi{background:var(--sunk);border-radius:12px;padding:10px}
+.kpi b{font-size:22px;display:block}
+.countdown{min-height:80vh;display:grid;place-items:center;text-align:center}
+.countdown .ring{font-size:56px;font-weight:800;color:var(--brand-text)}

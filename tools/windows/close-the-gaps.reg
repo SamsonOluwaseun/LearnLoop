@@ -1,0 +1,11 @@
+Windows Registry Editor Version 5.00
+
+; LearnLoop: close the usual gaps in Google Chrome on this computer.
+; Uses Chrome's own documented policies. Applies to every Windows account on this computer, parents included.
+; Turns off Incognito windows, Guest mode and adding new Chrome profiles.
+; To undo, run undo-close-the-gaps.reg. Then restart Chrome. Check chrome://policy to see what is set.
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Google\Chrome]
+"IncognitoModeAvailability"=dword:00000001
+"BrowserGuestModeEnabled"=dword:00000000
+"BrowserAddPersonEnabled"=dword:00000000

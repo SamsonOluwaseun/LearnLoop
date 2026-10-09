@@ -3,3 +3,4 @@ node_modules/
 __pycache__/
 *.log
 tests/e2e/last-run.json
+tests/mobile/last-run.json

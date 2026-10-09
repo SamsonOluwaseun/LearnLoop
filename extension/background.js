@@ -253,7 +253,10 @@ async function handle(msg, sender) {
             const old = db.children.find(c => c.id === nw.id);
             if (old && nw.stage) { C.ensureChildModel(old, C.dayKey(now)); for (const sub of C.SUBJECTS) if (nw.stage[sub] && old.stage[sub] !== nw.stage[sub]) C.setStage(db, old, sub, nw.stage[sub], now); }
           }
-          db.children = msg.children.map(c => Object.assign({}, c, { name: String(c.name).slice(0, 30) }));
+          db.children = msg.children.map(c => {
+            const clean = (m) => { const o = {}; for (const sj of C.SUBJECTS) o[sj] = [...new Set(((m || {})[sj] || []).filter(k => self.LLCurriculum.SKILLS[k]))].slice(0, 40); return o; };
+            return Object.assign({}, c, { name: String(c.name).slice(0, 30), spellings: C.cleanSpellings((c.spellings || []).join(' ')).words, focus: clean(c.focus), skip: clean(c.skip) });
+          });
           if (!db.children.some(c => c.id === db.activeChildId)) db.activeChildId = null;
         }
         if (a === 'setActive') { if (db.children.some(c => c.id === msg.childId)) { db.activeChildId = msg.childId; C.runtimeFor(db, msg.childId, now); } }

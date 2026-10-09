@@ -1,0 +1,8 @@
+Windows Registry Editor Version 5.00
+
+; LearnLoop: undo close-the-gaps.reg. Removes only the three settings it added. Restart Chrome afterwards.
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Google\Chrome]
+"IncognitoModeAvailability"=-
+"BrowserGuestModeEnabled"=-
+"BrowserAddPersonEnabled"=-

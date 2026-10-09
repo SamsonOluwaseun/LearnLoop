@@ -54,12 +54,13 @@
   const SKILLS = CUR.SKILLS;
 
   let qCounter = 0;
-  function makeQuestion(skill, r, level = 1) {
+  // ctx carries per-child content that is not part of the shared bank, such as the child's own spelling list
+  function makeQuestion(skill, r, level = 1, ctx = null) {
     const meta = SKILLS[skill]; const lv = Math.max(1, Math.min(CUR.MAX_LEVEL, level | 0 || 1));
-    const q = meta.gen(r, lv);
+    const q = meta.gen(r, lv, ctx || {});
     return Object.assign(q, {
       id: `${skill}/L${lv}/${q.variant}/v${CONTENT_VERSION_BANK}#${++qCounter}`, skill, subject: meta.subject, year: meta.year,
-      difficulty: lv, contentVersion: CONTENT_VERSION_BANK, grading: typeof q.answer === 'number' ? 'number-exact' : 'text-exact'
+      difficulty: lv, contentVersion: CONTENT_VERSION_BANK, grading: q.grading || (typeof q.answer === 'number' ? 'number-exact' : 'text-exact')
     });
   }
   // Older profiles used two bands. Early maps to Reception, primary to Year 2.
@@ -75,6 +76,8 @@
       return { status: n === q.answer ? 'correct' : 'incorrect' };
     }
     if (input === null || input === undefined || String(input).trim() === '') return { status: 'unrecognised' };
+    // Typed spellings: capital letters and curly apostrophes don't matter, the letters do
+    if (q.grading === 'text-ci') { const n = (x) => String(x).trim().toLowerCase().replace(/[’‘]/g, "'"); return { status: n(input) === n(q.answer) ? 'correct' : 'incorrect' }; }
     // Text answers come from the buttons, so they must match exactly. Case matters: some questions are about capital letters.
     return { status: String(input).trim() === String(q.answer) ? 'correct' : 'incorrect' };
   }
@@ -89,6 +92,7 @@
     constructor({ subject, band, year, plan, config, seed = 1, revision = [] }) {
       this.subject = subject; this.band = band;
       this.cfg = Object.assign({ minSec: 120, maxSec: 600, tasks: 5, masteryTarget: 4 }, config);
+      this.ctx = (config && config.custom) || {};
       this.r = rng(seed); this.elapsed = 0; this.paused = false;
       this.attempts = []; this.independentVariants = new Set(); this.seenVariants = new Set();
       this.revisit = new Set(); this.done = null; this.transferGiven = false;
@@ -107,10 +111,10 @@
     _fresh(skill, level) {
       const lv = level || this.levels[skill] || 1;
       for (let tries = 0; tries < 40; tries++) {
-        const q = makeQuestion(skill, this.r, lv);
+        const q = makeQuestion(skill, this.r, lv, this.ctx);
         if (!this.seenVariants.has(q.variant) && !this.queue.some(x => x.variant === q.variant)) return q;
       }
-      return makeQuestion(skill, this.r, lv);
+      return makeQuestion(skill, this.r, lv, this.ctx);
     }
     _resetQ() { this.wrong = 0; this.support = 'none'; this.altShown = false; }
     get current() { return this.done ? null : this.queue[this.index]; }

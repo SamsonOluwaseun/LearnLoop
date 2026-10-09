@@ -28,6 +28,12 @@ def test_build():
     return d
 
 WORDS = ['zero','one','two','three','four','five','six','seven','eight','nine','ten','eleven','twelve','thirteen','fourteen','fifteen','sixteen','seventeen','eighteen','nineteen','twenty']
+STORE = ROOT / 'store' / 'chrome-web-store' / 'screenshots'
+async def store_shot(page, name):
+    # Chrome Web Store screenshots must be 1280 x 800
+    STORE.mkdir(parents=True, exist_ok=True); size = page.viewport_size
+    await page.set_viewport_size({'width': 1280, 'height': 800}); await asyncio.sleep(0.4)
+    await page.screenshot(path=str(STORE / name)); await page.set_viewport_size(size)
 async def current_answer(page): return await page.evaluate("window.__llAnswer()")
 async def click_choice(page, value):
     await page.evaluate("(v) => [...document.querySelectorAll('.choice')].find(b => b.dataset.v === v).click()", value)
@@ -139,7 +145,7 @@ async def main():
             await vid.wait_for_function("() => { const o = document.querySelector('#learnloop-overlay'); return o && o.shadowRoot.querySelector('.ring'); }", timeout=90000)
             txt = await vid.evaluate("document.querySelector('#learnloop-overlay').shadowRoot.querySelector('.card').textContent")
             ov = await vid.evaluate("(() => { const r = document.querySelector('#learnloop-overlay').shadowRoot; const i = r.querySelector('.powered img'); return { text: r.querySelector('.powered').textContent, img: !!i && i.complete && i.naturalWidth > 0 }; })()")
-            await vid.screenshot(path=str(ROOT / 'docs' / 'img' / 'countdown.png'))
+            await vid.screenshot(path=str(ROOT / 'docs' / 'img' / 'countdown.png')); await store_shot(vid, '2-countdown.png')
             check('Countdown shows Powered by Samlytics Data Services with the logo', 'Powered by Samlytics Data Services' in ov['text'] and ov['img'], json.dumps(ov))
             check('Gentle countdown names the child, measured minutes and subject', "Well done, Joy" in txt and "1 minute" in txt and "Maths" in txt, txt[:90])
             await asyncio.sleep(11)
@@ -156,7 +162,7 @@ async def main():
             # ---- learning: one wrong answer, then four by themselves ----
             await vid.wait_for_selector('.prompt')
             lb = await vid.evaluate("(() => { const i = document.querySelector('.lbrand img'); return { img: !!i && i.complete && i.naturalWidth > 0, text: document.querySelector('.lhead').innerText }; })()")
-            await vid.screenshot(path=str(ROOT / 'docs' / 'img' / 'learning.png'))
+            await vid.screenshot(path=str(ROOT / 'docs' / 'img' / 'learning.png')); await store_shot(vid, '1-learning.png')
             check('Learning screen carries the logo and Powered by line', lb['img'] and 'Powered by Samlytics Data Services' in lb['text'], json.dumps(lb))
             note = await vid.inner_text('.lbody .note')
             check("Joy's questions come from her school year (Year 3) with a curriculum skill", note.startswith('Year 3 ·'), note)
@@ -286,6 +292,7 @@ async def main():
             bd = await opt.inner_text('#main')
             check('Report explains where the video time went', 'How far the videos moved on' in bd and 'Counted as watching' in bd, bd[bd.find('Where today'):bd.find('Where today') + 200])
             await opt.screenshot(path=str(ROOT / 'docs' / 'img' / 'report.png'), full_page=True)
+            await opt.evaluate("window.scrollTo(0, 0)"); await store_shot(opt, '4-report.png')
 
             # ---- version 1.1: a Year 6 child with Reasoning, extra practice and beat your own best ----
             await opt.click('#tabs button[data-v="kids"]'); await opt.wait_for_selector('.kidform'); await opt.click('#add'); await asyncio.sleep(0.3)
@@ -320,7 +327,7 @@ async def main():
                     seen_svg += 1
                     if not info['ok']: errors.append('an SVG drawing has no size')
                     if not shot and await pr.query_selector('.choice.svgc'):
-                        await pr.screenshot(path=str(ROOT / 'docs' / 'img' / 'reasoning.png')); shot = True
+                        await pr.screenshot(path=str(ROOT / 'docs' / 'img' / 'reasoning.png')); await store_shot(pr, '3-reasoning.png'); shot = True
                 right = await current_answer(pr); await click_choice(pr, right); await asyncio.sleep(1.6)
             await pr.wait_for_selector('.over .card', timeout=10000); endtxt = await pr.inner_text('.card')
             check('Reasoning questions come from Year 6', notes == {'Year 6'}, json.dumps(sorted(notes)))
@@ -351,6 +358,41 @@ async def main():
             await opt.bring_to_front(); await opt.click('#tabs button[data-v="report"]'); await asyncio.sleep(1)
             rep = await opt.inner_text('#main')
             check('Report shows Reasoning, extra practice and the own best', 'Reasoning (11+) Year 6' in rep and 'Beat your own best' in rep and 'Own best (10-question rounds): Reasoning (11+) 10 of 10' in rep, rep[rep.find('Ada'):rep.find('Ada') + 300].replace('\n', ' '))
+
+            # ---- version 1.2: topics, own spelling list and closing the gaps ----
+            await opt.click('#tabs button[data-v="now"]'); await opt.wait_for_selector('#who', timeout=10000)
+            gaps = await opt.inner_text('details.gaps')
+            check('Right now warns that Incognito windows are not covered yet', 'Incognito windows are not covered yet' in gaps and 'Allow in Incognito' in gaps, gaps[:160].replace('\n', ' '))
+            await opt.click('#tabs button[data-v="kids"]'); await opt.wait_for_selector('.kidform')
+            await opt.evaluate("document.querySelector('details.topics[data-i=\"0\"]').open = true")
+            await opt.fill('[data-i="0"][data-sp]', 'because, friend, Monday, 42, because')
+            await opt.locator('[data-i="0"][data-sp]').dispatch_event('change'); await asyncio.sleep(0.4)
+            topics = await opt.inner_text('details.topics[data-i="0"]')
+            check('Spelling words are cleaned and a bad entry is explained', 'Not added: 42' in topics and '3 spelling words' in topics, topics[:200].replace('\n', ' '))
+            first_maths = await opt.evaluate("document.querySelector('[data-i=\"0\"][data-topic^=\"maths|\"]').dataset.topic")
+            await opt.select_option(f'[data-i="0"][data-topic="{first_maths}"]', 'skip'); await asyncio.sleep(0.4)
+            await opt.evaluate("document.querySelector('details.topics[data-i=\"0\"]').open = true")
+            second_maths = await opt.evaluate("[...document.querySelectorAll('[data-i=\"0\"][data-topic^=\"maths|\"]')][1].dataset.topic")
+            await opt.select_option(f'[data-i="0"][data-topic="{second_maths}"]', 'focus'); await asyncio.sleep(0.4)
+            await opt.evaluate("document.querySelector('details.topics[data-i=\"0\"]').open = true; document.querySelector('details.topics[data-i=\"0\"]').scrollIntoView()")
+            await store_shot(opt, '5-topics.png')
+            await opt.click('#save'); await asyncio.sleep(1)
+            d = await db(); joy = d['children'][0]
+            check('Topic choices and the spelling list are saved for that child', joy['spellings'] == ['because', 'friend', 'Monday'] and joy['skip']['maths'] == [first_maths.split('|')[1]] and joy['focus']['maths'] == [second_maths.split('|')[1]], json.dumps({k: joy.get(k) for k in ('spellings', 'focus', 'skip')}))
+            await opt.click('#tabs button[data-v="now"]'); await opt.wait_for_selector('#who', timeout=10000)
+            await opt.click('#who button[data-k]:nth-child(1)'); await asyncio.sleep(1)
+            pr = await ctx.new_page(); pr.on('pageerror', lambda e: errors.append('practice 1.2: ' + str(e)))
+            await pr.goto(f'chrome-extension://{ext_id}/learn.html?practice=1'); await pr.wait_for_selector('[data-sub]')
+            await pr.click('[data-sub="english"]'); await pr.wait_for_selector('.prompt')
+            note = await pr.inner_text('.lbody .note'); prompt = await pr.inner_text('.prompt')
+            labels = await pr.evaluate("[...document.querySelectorAll('.choice')].map(b => b.textContent)")
+            right = await current_answer(pr)
+            check("English starts with the child's own spelling words", note.startswith('Our list · Our spelling list') and prompt == 'Which is the right spelling?' and right in ['because', 'friend', 'Monday'] and right in labels and len(labels) >= 2, f'{note} | {prompt} | {labels}')
+            check('A listen button is shown for spelling even without read-aloud', await pr.query_selector('#spk.big') is not None)
+            await click_choice(pr, right); await asyncio.sleep(1.6)
+            await pr.click('[data-sub]') if await pr.query_selector('[data-sub]') else None
+            await pr.close()
+            await opt.screenshot(path=str(ROOT / 'docs' / 'img' / 'gaps.png'))
             check('No script errors in any page', not errors, '; '.join(errors)[:300])
             await ctx.close()
     finally:

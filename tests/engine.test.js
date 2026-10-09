@@ -10,7 +10,7 @@ const wrongVal = (q) => q.choices.find(c => c.value !== q.answer).value;
 test('every generated question is gradeable and well formed', () => {
   const r = L.rng(7);
   for (const skill of Object.keys(L.SKILLS)) for (let lv = 1; lv <= 3; lv++) for (let i = 0; i < 200; i++) {
-    const q = L.makeQuestion(skill, r, lv);
+    const q = L.makeQuestion(skill, r, lv, { words: ['because', 'friend', 'Monday'], typing: true });
     for (const k of ['id', 'subject', 'skill', 'year', 'difficulty', 'response', 'grading', 'contentVersion', 'hint', 'worked'])
       assert.ok(q[k] !== undefined && q[k] !== '', `${skill} missing ${k}`);
     const vals = q.choices.map(c => c.value);
@@ -169,9 +169,9 @@ test('sessions follow the plan levels, and repeated difficulty brings an easier 
   assert.equal(easier.skill, 'add-sub-3digit'); assert.equal(easier.difficulty, 2);
 });
 
-test('the question bank covers Reception to Year 3 in both subjects, with curriculum references', () => {
+test('the question bank covers Reception to Year 6 in both subjects, with curriculum references', () => {
   for (const y of L.CUR.YEARS) for (const sub of ['maths', 'english']) assert.ok(L.CUR.skillsIn(sub, y).length >= 4, `${sub} ${y}`);
-  for (const [k, s] of Object.entries(L.SKILLS)) assert.ok(s.nc && s.label && L.CUR.YEARS.includes(s.year), k);
+  for (const [k, s] of Object.entries(L.SKILLS)) assert.ok(s.nc && s.label && (L.CUR.YEARS.includes(s.year) || s.year === 'own'), k);
 });
 
 test('first-sound pictures never have another common name that starts with the target sound', () => {

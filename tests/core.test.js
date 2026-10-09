@@ -415,3 +415,36 @@ test('beat your own best: only finished rounds count, more answers by themselves
   const helped = C.recordPractice(db, 'joy', { subject: 'maths', challenge: true, complete: true, learningSec: 60, attempts: ok('times-3-4-8', 10, true, 'hint'), revisit: [] }, T0);
   assert.equal(helped.round.score, 0); assert.equal(helped.best, false);
 });
+
+// ---- version 1.2: parent focus topics, skipped topics and the child's own spelling list ----
+test('spelling words are cleaned: single words only, no repeats, at most 30', () => {
+  const r = C.cleanSpellings('because, Friend friend\nMonday; it\'s well-known 42 two words! a ' + Array.from({ length: 40 }, (_, i) => 'word' + 'abcdefghijklmnopqrstuvwxyz'[i % 26] + 'abcdefghijklmnopqrstuvwxyz'[Math.floor(i / 26)]).join(' '));
+  assert.deepEqual(r.words.slice(0, 7), ['because', 'Friend', 'Monday', "it's", 'well-known', 'two', 'words']);
+  assert.equal(r.words.length, 30); assert.ok(r.rejected.includes('42') && r.rejected.includes('a'));
+});
+
+test('focus topics come first, skipped topics are left out, and the spelling list joins English', () => {
+  const db = setup(); const joy = db.children[0];
+  const y3 = CUR.skillsIn('maths', 'Y3');
+  joy.focus = { maths: ['times-3-4-8', 'add-sub-3digit-not-a-skill'] }; joy.skip = { maths: [y3[0] === 'times-3-4-8' ? y3[1] : y3[0]] };
+  const plan = C.planSession(db, joy, 'maths', T0).map(p => p.skill);
+  assert.equal(plan[0], 'times-3-4-8'); assert.ok(!plan.includes(joy.skip.maths[0])); assert.ok(!plan.includes('add-sub-3digit-not-a-skill'));
+  const y2 = CUR.skillsIn('maths', 'Y2')[0]; joy.focus.maths.push(y2); // a topic from another year can be a focus
+  assert.deepEqual(C.planSession(db, joy, 'maths', T0).slice(0, 2).map(p => p.skill), ['times-3-4-8', y2]);
+  // skipping everything is ignored rather than leaving an empty session
+  joy.skip.maths = y3.slice(); joy.focus.maths = [];
+  assert.equal(C.planSession(db, joy, 'maths', T0).length, y3.length);
+  // the spelling list needs at least 3 words
+  joy.spellings = ['because', 'friend'];
+  assert.ok(!C.planSession(db, joy, 'english', T0).some(p => p.skill === 'my-spellings'));
+  joy.spellings.push('Monday');
+  assert.equal(C.planSession(db, joy, 'english', T0)[0].skill, 'my-spellings');
+  joy.skip = { english: ['my-spellings'] };
+  assert.ok(!C.planSession(db, joy, 'english', T0).some(p => p.skill === 'my-spellings'));
+});
+
+test('a session built from the plan asks the child\'s own words', () => {
+  const db = setup(); const joy = db.children[0]; joy.spellings = ['because', 'friend', 'Monday'];
+  const s = new globalThis.LearnLoop.LearningSession({ subject: 'english', plan: C.planSession(db, joy, 'english', T0), seed: 3, config: { custom: { words: joy.spellings, typing: true }, tasks: 5 } });
+  assert.equal(s.current.skill, 'my-spellings'); assert.ok(joy.spellings.includes(s.current.answer));
+});

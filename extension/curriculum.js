@@ -12,9 +12,9 @@
  */
 (function (root) {
   'use strict';
-  const CONTENT_VERSION = '1.1.0';
+  const CONTENT_VERSION = '1.2.0';
   const YEARS = ['R', 'Y1', 'Y2', 'Y3', 'Y4', 'Y5', 'Y6'];
-  const YEAR_LABEL = { R: 'Reception', Y1: 'Year 1', Y2: 'Year 2', Y3: 'Year 3', Y4: 'Year 4', Y5: 'Year 5', Y6: 'Year 6' };
+  const YEAR_LABEL = { R: 'Reception', Y1: 'Year 1', Y2: 'Year 2', Y3: 'Year 3', Y4: 'Year 4', Y5: 'Year 5', Y6: 'Year 6', own: 'Our list' };
   const SUBJECT_LABEL = { maths: 'Maths', english: 'English', reasoning: 'Reasoning (11+)' };
 
   // ---------- helpers ----------
@@ -742,11 +742,68 @@
     } };
   E['reading-y3'] = readingSkill('Y3');
 
+  // ---------- the child's own spelling list (typed in by a parent, for example the school's weekly words) ----------
+  // Wrong options are made by common spelling slips: a doubled or single letter, swapped vowels, a dropped silent e and so on.
+  // A slip can very rarely make another real word, so any slip that matches a word LearnLoop knows is thrown away.
+  const KNOWN = new Set();
+  function slips(word) {
+    const w = word.toLowerCase(), out = new Set(); const V = 'aeiou';
+    const add = (x) => { if (x && x !== w && x.length >= 2 && /^[a-z'’-]+$/.test(x) && !KNOWN.has(x)) out.add(x); };
+    for (let i = 0; i < w.length; i++) {
+      const c = w[i];
+      if (w[i + 1] === c) add(w.slice(0, i) + w.slice(i + 1));                       // different → diferent
+      else if (/[bcdfglmnprst]/.test(c) && i > 0 && w[i - 1] !== c && (i < w.length - 1 || /[lsf]/.test(c))) add(w.slice(0, i + 1) + c + w.slice(i + 1)); // because → becausse
+      if (V.includes(c) && V.includes(w[i + 1]) && c !== w[i + 1]) add(w.slice(0, i) + w[i + 1] + c + w.slice(i + 2)); // friend → freind
+    }
+    const swaps = [['ph', 'f'], ['ck', 'k'], ['tion', 'shun'], ['ight', 'ite'], ['ou', 'ow'], ['ea', 'ee'], ['ai', 'ay'], ['wh', 'w'], ['kn', 'n'], ['wr', 'r'], ['ie', 'y'], ['ey', 'ay'], ['our', 'or'], ['ture', 'cher'], ['ous', 'us'], ['ce', 'se'], ['se', 'ze'], ['er', 'ur'], ['ir', 'ur'], ['or', 'aw']];
+    for (const [a, b] of swaps) { if (w.includes(a)) add(w.replace(a, b)); }
+    if (w.length > 3 && w.endsWith('e')) add(w.slice(0, -1));
+    const real = [...out]; out.clear();
+    // fallback only: change one vowel inside the word (never the first or last letter)
+    const vi = [...w].map((c, i) => V.includes(c) ? i : -1).filter(i => i > 0 && i < w.length - 1);
+    for (const i of vi) for (const v of 'aeiou') if (v !== w[i]) add(w.slice(0, i) + v + w.slice(i + 1));
+    return { real, fallback: [...out].filter(x => !real.includes(x)) };
+  }
+  const capLike = (model, x) => model[0] === model[0].toUpperCase() && model[0] !== model[0].toLowerCase() ? x[0].toUpperCase() + x.slice(1) : x;
+  E['my-spellings'] = { year: 'own', label: 'Our spelling list', nc: 'Words a parent adds, for example the school spelling list for the week. English appendix 1: spelling',
+    gen(r, L, ctx) {
+      const words = (ctx && ctx.words) || []; if (!words.length) throw new Error('my-spellings needs a word list');
+      const word = pick(r, words); const lower = new Set(words.map(x => x.toLowerCase()));
+      // prefer slips close to the word; never offer another word from the child's own list
+      const sl = slips(word); const cand = [...shuffle(r, sl.real), ...shuffle(r, sl.fallback)].filter(x => !lower.has(x));
+      const need = L === 1 ? 2 : 3; const wrong = cand.slice(0, need).map(x => capLike(word, x));
+      const typed = L === 3 && ctx.typing;
+      return { variant: `own:${word.toLowerCase()}`, listen: true, prompt: typed ? 'Listen, then type the word you hear.' : 'Which is the right spelling?',
+        speak: typed ? `Spell the word: ${word}.` : `Which is the right spelling of ${word}?`, response: typed ? 'type' : 'choice', grading: 'text-ci',
+        visual: null, answer: word, choices: strChoices(r, word, wrong),
+        hint: `Say ${word} slowly and listen for each sound. Is there a tricky part you remember from school?`,
+        alt: { kind: 'clue', text: typed ? 'Pick from these instead.' : `It has ${word.length} letters.` },
+        worked: `${word} is spelt ${word.split('').join(' ')}.` };
+    } };
+
   // ---------- registry ----------
   const SKILLS = {};
   for (const [id, s] of Object.entries(M)) SKILLS[id] = Object.assign({ subject: 'maths' }, s);
   for (const [id, s] of Object.entries(E)) SKILLS[id] = Object.assign({ subject: 'english' }, s);
   const MAX_LEVEL = 3;
+  for (const list of [CEW1, CEW2, W34]) for (const x of list) KNOWN.add(x.word.toLowerCase());
+  // Common short words and homophones, so a slip never turns into a real word
+  const COMMON = `there their where were wear hear here to too two no know new knew right write sea see for four bear bare son sun one won eight ate
+    buy by bye which witch whether weather peace piece plain plane meat meet week weak tail tale road rode rowed flour flower hole
+    whole night knight not knot grate great mail male pair pear pare main mane quiet quite accept except affect effect then than of
+    off loose lose sight site cite bin ban bun ben cot cut cat hat hot hit hut bat bet bit but bot pin pan pen pun tin ten tan ton sit
+    set sat pot pit put pet pat mud mad mid red rid rod rad fit fat fun fan fin big bag beg bog bug dig dog dug hop hope hip hup cap
+    cape cop cup tap tape tip top tub tube kit kite note rob robe cub cube win wine wan wane fir fur far form from farm firm shut shot
+    ship shop chip chop chap chat sheep shape sleep slip boat bout beat bait coat cost coast feet fate foot boot book look lock lick
+    luck lack sock sick suck sack back buck beck deck dock duck rock rack neck nick pick pack peck puck tick tack tuck wick pool pull
+    pole poll pale pile mile mole mule time tame tome line lane lone mine cane cone tune tone bone bane made mode ride rude side hide
+    hid slid slide fire hire hare care core cure more mare mere pure pore sure sore dare dire wire wore ware tire tore tare bake bike
+    cake coke like lake make poke pike woke wake take toke later latter diner dinner super supper hoping hopping planing planning
+    taping tapping desert dessert its it's whose who's your you're they them these those this thus once ones come came some same home
+    name game gone done dine dune live love move have hive give gave save wave lost last list best bust vest vast fist fast feast mist
+    most must mast post past pest rest rust test toast west went want wont sent scent cent bend band bond bind find fund fend lend
+    land mend mind pond send sand tend wind wand warm worm word ward work walk`;
+  for (const x of COMMON.split(/\s+/)) KNOWN.add(x);
   const skillsIn = (subject, year) => Object.keys(SKILLS).filter(k => SKILLS[k].subject === subject && SKILLS[k].year === year);
 
   // England: the school year starts on 1 September. A child starts Reception in the September after they turn 4.
@@ -759,7 +816,7 @@
   // Extra packs (Years 4 to 6, Reasoning) add their skills through install(). Each skill says its own subject.
   function install(pack) { for (const [id, s] of Object.entries(pack)) { if (SKILLS[id]) throw new Error('Duplicate skill ' + id); SKILLS[id] = s; } }
   const helpers = { pick, int, shuffle, numChoices, strChoices, pence, WORDS, timeLabel, ROMAN };
-  const api = { CONTENT_VERSION, YEARS, YEAR_LABEL, SUBJECT_LABEL, SKILLS, MAX_LEVEL, skillsIn, schoolYearFor, PIC, namesOf, INITIAL, startsWithSound, CEW1, CEW2, W34, HOMO2, HOMO3, PASSAGES, install, helpers };
+  const api = { CONTENT_VERSION, YEARS, YEAR_LABEL, SUBJECT_LABEL, SKILLS, MAX_LEVEL, skillsIn, schoolYearFor, PIC, namesOf, INITIAL, startsWithSound, CEW1, CEW2, W34, HOMO2, HOMO3, PASSAGES, install, helpers, KNOWN, slips };
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = api;
     require('./curriculum-ks2.js')(api); require('./reasoning.js')(api);
