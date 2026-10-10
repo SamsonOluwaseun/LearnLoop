@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LearnLoop voice-over recorder</title>
+<style>
+  :root{--bg:#FEFFF8;--surface:#fff;--ink:#00212B;--muted:#3E5862;--line:#D6E3F5;--blue:#4392F1;--blue-text:#1D6BD0;--lime:#DCFF38;--rose:#C4553C;--soft:#E3EFFD}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#00212B;--surface:#06303D;--ink:#FEFFF8;--muted:#A9BDC4;--line:#1A4A5A;--blue:#6AA8F4;--blue-text:#8DBDF7;--soft:#0F3B5E}}
+  *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--ink);font:500 17px/1.5 "Segoe UI",system-ui,sans-serif}
+  .wrap{max-width:860px;margin:0 auto;padding:20px 16px 60px}
+  h1{font-size:30px;margin:0 0 6px} .muted{color:var(--muted)}
+  .tips{background:var(--soft);border-radius:14px;padding:12px 16px;margin:14px 0 20px}
+  .tips li{margin:2px 0}
+  .line{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;margin:12px 0;display:grid;gap:10px}
+  .line.rec{border-color:var(--rose);box-shadow:0 0 0 3px rgb(196 85 60/.2)} .line.done{border-color:var(--blue)}
+  .head{display:flex;gap:10px;align-items:center;flex-wrap:wrap} .num{width:34px;height:34px;border-radius:50%;background:var(--blue);color:#fff;display:grid;place-items:center;font-weight:800}
+  .say{font-size:22px;font-weight:600;line-height:1.4} .aim{font-size:14px;color:var(--muted)}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  button{font:inherit;font-weight:700;border-radius:10px;padding:9px 16px;border:2px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+  button.rec{background:var(--rose);border-color:var(--rose);color:#fff} button.main{background:var(--lime);border-color:#C2E812;color:#00212B}
+  button:disabled{opacity:.45;cursor:default}
+  .status{font-size:14px;font-weight:700} .ok{color:var(--blue-text)} .warn{color:var(--rose)}
+  .bar{position:sticky;bottom:0;background:var(--bg);border-top:1px solid var(--line);padding:12px 0;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+  .meter{height:8px;border-radius:6px;background:var(--line);overflow:hidden;width:160px} .meter i{display:block;height:100%;width:0;background:var(--blue)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>LearnLoop voice-over recorder</h1>
+  <p class="muted" style="margin:0">Record each line of the guide video in your own voice. Your recordings stay in this browser until you download them. Nothing is uploaded.</p>
+  <ul class="tips">
+    <li>Use Chrome or Edge, in a quiet room, with the phone or laptop about an arm's length away.</li>
+    <li>Press <b>Record</b>, wait a moment, read the line calmly, then press <b>Stop</b>. Redo any line as often as you like.</li>
+    <li>Try to stay close to the time shown. If a line runs longer, the video scene will be lengthened to fit.</li>
+    <li>When every line has a tick, press <b>Download all recordings</b> and send the zip file to Claude.</li>
+  </ul>
+  <div id="lines"></div>
+  <div class="bar">
+    <button class="main" id="zip" disabled>Download all recordings</button>
+    <span class="status" id="count">0 of 16 recorded</span>
+    <span class="meter" title="Microphone level"><i id="lvl"></i></span>
+    <span class="status warn" id="err"></span>
+  </div>
+</div>
+<script>
+// Lines and target seconds match the scenes in store/video/build-video.py
+const LINES = [
+  ['Meet LearnLoop. Your children watch, then they learn, then they watch again.', 5],
+  ["Add LearnLoop to Chrome. It's free, with no account and no adverts.", 4.5],
+  ['Choose a parent PIN. It keeps the settings for grown-ups.', 4.5],
+  ['Write down your recovery code, just in case.', 4.5],
+  ['Add your child. Their date of birth sets the school year they start at. Then choose the video and learning times.', 6.5],
+  ['On YouTube, your child taps their name.', 4.5],
+  ['LearnLoop only counts real watching, when a video is playing in front of them.', 5],
+  ["When the time is up, there's a gentle countdown, and the video pauses and keeps its place.", 6],
+  ['Then a short learning session that follows the national curriculum in England.', 5.5],
+  ['Stuck? Help me gives a clue. Wrong answers are never punished.', 5.5],
+  ['Answers they give by themselves fill the stars.', 4.5],
+  ['Enough of those and they can go back early. Sessions always end on time.', 6],
+  ['Back to the same video, at the same point.', 6],
+  ['And you can see real progress in the report.', 5.5],
+  ["Focus on topics, and add this week's school spellings.", 5.5],
+  ['LearnLoop is free, private and open source. Find it on our website.', 6.5]
+];
+const takes = new Array(LINES.length).fill(null); // {blob, sec, url}
+let stream = null, rec = null, recIndex = -1, startedAt = 0, analyser = null;
+const $ = (id) => document.getElementById(id);
+const esc = (s) => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+function render() {
+  $('lines').innerHTML = LINES.map(([text, sec], i) => {
+    const t = takes[i];
+    return `<div class="line ${recIndex === i ? 'rec' : t ? 'done' : ''}">
+      <div class="head"><span class="num">${i + 1}</span><span class="aim">Aim for about ${sec} seconds</span>
+        <span class="status ${t ? 'ok' : ''}">${recIndex === i ? 'Recording…' : t ? `✓ Recorded, ${t.sec.toFixed(1)} s${t.sec > sec + 1.5 ? ' (a little long, the scene will stretch)' : ''}` : ''}</span></div>
+      <div class="say">${esc(text)}</div>
+      <div class="row">
+        ${recIndex === i ? `<button class="rec" data-stop="${i}">Stop</button>` : `<button class="rec" data-rec="${i}" ${recIndex >= 0 ? 'disabled' : ''}>${t ? 'Record again' : 'Record'}</button>`}
+        ${t ? `<audio controls src="${t.url}"></audio>` : ''}
+      </div></div>`;
+  }).join('');
+  const n = takes.filter(Boolean).length;
+  $('count').textContent = `${n} of ${LINES.length} recorded`;
+  $('zip').disabled = n === 0 || recIndex >= 0;
+  $('zip').textContent = n === LINES.length ? 'Download all recordings' : `Download ${n} recording${n === 1 ? '' : 's'} so far`;
+  document.querySelectorAll('[data-rec]').forEach(b => b.onclick = () => start(+b.dataset.rec));
+  document.querySelectorAll('[data-stop]').forEach(b => b.onclick = () => stop());
+}
+
+async function mic() {
+  if (stream) return stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+  } catch (e) {
+    $('err').textContent = 'The microphone is blocked. Click the camera or lock icon in the address bar, allow the microphone, then reload this page.';
+    throw e;
+  }
+  const ac = new AudioContext(); analyser = ac.createAnalyser(); analyser.fftSize = 512; ac.createMediaStreamSource(stream).connect(analyser);
+  const buf = new Uint8Array(analyser.fftSize);
+  (function meter() { analyser.getByteTimeDomainData(buf); let p = 0; for (const v of buf) p = Math.max(p, Math.abs(v - 128)); $('lvl').style.width = Math.min(100, p / 1.28) + '%'; requestAnimationFrame(meter); })();
+  return stream;
+}
+async function start(i) {
+  $('err').textContent = '';
+  const s = await mic(); const chunks = [];
+  rec = new MediaRecorder(s, MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? { mimeType: 'audio/webm;codecs=opus' } : {});
+  rec.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
+  rec.onstop = () => {
+    const blob = new Blob(chunks, { type: rec.mimeType || 'audio/webm' });
+    if (takes[i]) URL.revokeObjectURL(takes[i].url);
+    takes[i] = { blob, sec: (performance.now() - startedAt) / 1000, url: URL.createObjectURL(blob) };
+    recIndex = -1; render();
+  };
+  recIndex = i; startedAt = performance.now(); rec.start(); render();
+}
+function stop() { if (rec && rec.state === 'recording') rec.stop(); }
+
+// A small zip writer (files stored without compression), so everything downloads as one file
+const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+const crc32 = (u8) => { let c = 0xFFFFFFFF; for (const b of u8) c = CRC[(c ^ b) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
+async function zip(files) {
+  const enc = new TextEncoder(); const parts = [], central = []; let offset = 0;
+  for (const f of files) {
+    const data = new Uint8Array(await f.blob.arrayBuffer()), name = enc.encode(f.name), crc = crc32(data);
+    const h = new DataView(new ArrayBuffer(30)); h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint32(14, crc, true); h.setUint32(18, data.length, true); h.setUint32(22, data.length, true); h.setUint16(26, name.length, true);
+    parts.push(h.buffer, name, data);
+    const c = new DataView(new ArrayBuffer(46)); c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint32(16, crc, true); c.setUint32(20, data.length, true); c.setUint32(24, data.length, true); c.setUint16(28, name.length, true); c.setUint32(42, offset, true);
+    central.push(c.buffer, name); offset += 30 + name.length + data.length;
+  }
+  const size = central.reduce((t, p) => t + (p.byteLength || p.length), 0);
+  const e = new DataView(new ArrayBuffer(22)); e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, size, true); e.setUint32(16, offset, true);
+  return new Blob([...parts, ...central, e.buffer], { type: 'application/zip' });
+}
+$('zip').onclick = async () => {
+  const files = takes.map((t, i) => t && { name: `voice-${String(i + 1).padStart(2, '0')}.webm`, blob: t.blob }).filter(Boolean);
+  const blob = await zip(files); const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = 'learnloop-voice-over.zip'; a.click();
+};
+render();
+</script>
+</body>
+</html>

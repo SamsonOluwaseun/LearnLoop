@@ -34,7 +34,7 @@ Made by a parent, for parents. Powered by Samlytics Data Services.
 
 ## Optional voice-over script
 
-The video has no sound. If you want a voice-over, YouTube Studio lets you add audio, or you can record this on your phone while the video plays. Each line matches one scene. YouTube only shows chapters that are at least 10 seconds long, which is why some are grouped.
+The video has no sound. YouTube Studio cannot add your own voice, so the voice goes into the file before upload. Open `voice-recorder.html` (or https://samsonoluwaseun.github.io/LearnLoop/voice-recorder.html), record each line, download the zip, then run `python3 store/video/build-video.py learnloop-voice-over.zip`. That makes `LearnLoop-setup-guide-voice.mp4`, with each scene lengthened to fit its line. Each line matches one scene. YouTube only shows chapters that are at least 10 seconds long, which is why some are grouped.
 
 1. (0:00) Meet LearnLoop. Your children watch, then they learn, then they watch again.
 2. (0:05) Add LearnLoop to Chrome. It's free, with no account and no adverts.
