@@ -35,6 +35,9 @@
     <li>Try to stay close to the time shown. If a line runs longer, the video scene will be lengthened to fit.</li>
     <li>When every line has a tick, press <b>Download all recordings</b> and send the zip file to Claude.</li>
   </ul>
+  <div class="line" id="micbox"><div class="head"><span class="num">🎤</span><b>Step 1: turn on your microphone</b></div>
+    <div class="row"><button class="main" id="micbtn">Turn on microphone</button><span class="status" id="micstate"></span></div>
+    <div id="michelp" class="muted"></div></div>
   <div id="lines"></div>
   <div class="bar">
     <button class="main" id="zip" disabled>Download all recordings</button>
@@ -88,22 +91,39 @@ function render() {
   document.querySelectorAll('[data-stop]').forEach(b => b.onclick = () => stop());
 }
 
+// Plain-English help for each reason the microphone can fail
+const HELP = {
+  frame: 'This page is open inside a preview, which cannot use the microphone. Open it in a normal Chrome tab: https://samsonoluwaseun.github.io/LearnLoop/voice-recorder.html',
+  insecure: 'The microphone only works on a secure page. Open https://samsonoluwaseun.github.io/LearnLoop/voice-recorder.html in Chrome.',
+  NotAllowedError: 'The microphone is blocked. 1) Click the icon just left of the web address, choose Site settings, and set Microphone to Allow. 2) In Windows, open Settings > Privacy & security > Microphone, and turn on "Microphone access", "Let apps access your microphone" and "Let desktop apps access your microphone". Then reload this page and press Turn on microphone again.',
+  NotFoundError: 'No microphone was found. Plug in a headset or check the laptop microphone is switched on in Windows Settings > System > Sound > Input.',
+  NotReadableError: 'Another app is using the microphone (for example Teams, Zoom or a recorder). Close it, then press Turn on microphone again.',
+  other: 'Chrome could not start the microphone. Reload the page and try again. If it still fails, try the online link: https://samsonoluwaseun.github.io/LearnLoop/voice-recorder.html'
+};
+function showHelp(key, detail) {
+  $('micstate').className = 'status warn'; $('micstate').textContent = 'Microphone not working';
+  $('michelp').textContent = (HELP[key] || HELP.other) + (detail ? ` (${detail})` : '');
+}
 async function mic() {
   if (stream) return stream;
+  let inFrame = false; try { inFrame = window.self !== window.top; } catch (e) { inFrame = true; }
+  if (inFrame) { showHelp('frame'); throw new Error('frame'); }
+  if (!window.isSecureContext || !navigator.mediaDevices) { showHelp('insecure'); throw new Error('insecure'); }
   try {
     stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
   } catch (e) {
-    $('err').textContent = 'The microphone is blocked. Click the camera or lock icon in the address bar, allow the microphone, then reload this page.';
-    throw e;
+    showHelp(e.name === 'SecurityError' ? 'NotAllowedError' : HELP[e.name] ? e.name : 'other', e.name); throw e;
   }
+  $('micstate').className = 'status ok'; $('micstate').textContent = '✓ Microphone on. Speak and watch the level bar move.'; $('michelp').textContent = '';
+  $('micbtn').hidden = true;
   const ac = new AudioContext(); analyser = ac.createAnalyser(); analyser.fftSize = 512; ac.createMediaStreamSource(stream).connect(analyser);
   const buf = new Uint8Array(analyser.fftSize);
   (function meter() { analyser.getByteTimeDomainData(buf); let p = 0; for (const v of buf) p = Math.max(p, Math.abs(v - 128)); $('lvl').style.width = Math.min(100, p / 1.28) + '%'; requestAnimationFrame(meter); })();
   return stream;
 }
 async function start(i) {
-  $('err').textContent = '';
-  const s = await mic(); const chunks = [];
+  let s; try { s = await mic(); } catch (e) { $('micbox').scrollIntoView({ behavior: 'smooth' }); return; }
+  const chunks = [];
   rec = new MediaRecorder(s, MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? { mimeType: 'audio/webm;codecs=opus' } : {});
   rec.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
   rec.onstop = () => {
@@ -137,6 +157,7 @@ $('zip').onclick = async () => {
   const blob = await zip(files); const a = document.createElement('a');
   a.href = URL.createObjectURL(blob); a.download = 'learnloop-voice-over.zip'; a.click();
 };
+$('micbtn').onclick = () => mic().catch(() => {});
 render();
 </script>
 </body>
