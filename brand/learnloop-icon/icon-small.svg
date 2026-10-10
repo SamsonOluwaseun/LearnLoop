@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="LearnLoop icon">
+  <title>LearnLoop</title>
+  <!-- Simplified for 16 and 32 pixels: thicker loop, no arrowhead detail that would blur -->
+  <rect width="512" height="512" rx="112" fill="#00212B"/>
+  <path d="M 410 210 A 160 160 0 1 1 330 112" fill="none" stroke="#4392F1" stroke-width="72" stroke-linecap="round"/>
+  <path d="M 206 160 L 350 256 L 206 352 Z" fill="#DCFF38" stroke="#DCFF38" stroke-width="40" stroke-linejoin="round"/>
+</svg>

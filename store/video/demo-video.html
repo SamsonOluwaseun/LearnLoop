@@ -1,0 +1,22 @@
+<!doctype html><html><head><meta charset="utf-8"><title>A cartoon</title></head>
+<body style="margin:0;background:#0f0f0f;display:grid;place-items:center;height:100vh">
+<!-- A made-up cartoon for the guide video: a real playing <video>, drawn on a canvas, no network and no real channel -->
+<video class="html5-main-video" id="v" width="1024" height="576" muted playsinline style="border-radius:14px;background:#000"></video>
+<script>
+const c = document.createElement('canvas'); c.width = 640; c.height = 360; const x = c.getContext('2d'); let t = 0;
+function frame() {
+  t += 1 / 30;
+  const sky = x.createLinearGradient(0, 0, 0, 360); sky.addColorStop(0, '#8fd3ff'); sky.addColorStop(1, '#dff3ff'); x.fillStyle = sky; x.fillRect(0, 0, 640, 360);
+  x.fillStyle = '#ffd34d'; x.beginPath(); x.arc(540, 70, 38, 0, 7); x.fill();
+  for (let i = 0; i < 3; i++) { const cx = ((t * 20 + i * 260) % 900) - 120; x.fillStyle = '#fff'; x.beginPath(); x.ellipse(cx, 60 + i * 25, 46, 18, 0, 0, 7); x.ellipse(cx + 30, 52 + i * 25, 30, 16, 0, 0, 7); x.fill(); }
+  x.fillStyle = '#7bc96f'; x.beginPath(); x.ellipse(160, 380, 330, 130, 0, 0, 7); x.fill();
+  x.fillStyle = '#5fb35a'; x.beginPath(); x.ellipse(520, 390, 300, 120, 0, 0, 7); x.fill();
+  const bx = 320 + Math.sin(t * 1.3) * 200, by = 250 - Math.abs(Math.sin(t * 3)) * 120;
+  x.fillStyle = '#ff7a59'; x.beginPath(); x.arc(bx, by, 26, 0, 7); x.fill();
+  x.fillStyle = '#fff'; x.beginPath(); x.arc(bx - 8, by - 6, 6, 0, 7); x.arc(bx + 8, by - 6, 6, 0, 7); x.fill();
+  x.fillStyle = '#222'; x.beginPath(); x.arc(bx - 7, by - 5, 3, 0, 7); x.arc(bx + 9, by - 5, 3, 0, 7); x.fill();
+  x.strokeStyle = '#222'; x.lineWidth = 3; x.beginPath(); x.arc(bx, by + 4, 9, 0.2, Math.PI - 0.2); x.stroke();
+}
+setInterval(frame, 33); frame();
+document.getElementById('v').srcObject = c.captureStream(30);
+</script></body></html>

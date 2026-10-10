@@ -56,9 +56,12 @@ MIT licence. Code, curriculum map and test reports: https://github.com/SamsonOlu
 Powered by Samlytics Data Services.
 
 **Graphic assets**
-- Store icon 128 x 128: `extension/icons/128.png`
+- Store icon 128 x 128: `brand/learnloop-icon/learnloop-store-128.png` (the drawing is 96 x 96 with a clear 16-pixel border, as Google's guidelines ask)
 - Screenshots 1280 x 800 (upload in this order): `store/chrome-web-store/screenshots/1-learning.png`, `2-countdown.png`, `3-reasoning.png`, `4-report.png`, `5-topics.png`
 - Small promo tile 440 x 280: `store/chrome-web-store/promo-440x280.png`
+- Marquee promo tile 1400 x 560: `store/chrome-web-store/marquee-1400x560.png`
+- Global promo video: upload `store/video/LearnLoop-setup-guide.mp4` to YouTube (see `store/video/YOUTUBE.md`) and paste its link
+- All images are 24-bit PNG with no transparency, as the form asks
 
 **Official URL:** leave blank unless you verify a domain.
 **Homepage URL:** https://samsonoluwaseun.github.io/LearnLoop/
