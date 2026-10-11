@@ -57,7 +57,7 @@ def voice_lines(zpath, tmp):
     for f in sorted((tmp / 'voice').glob('voice-*.*')):
         i = int(f.stem.split('-')[1]) - 1
         # trim silence at both ends, then measure
-        clean = f.with_suffix('.wav')
+        clean = f.with_name(f.stem + '-clean.wav')
         subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', str(f), '-af',
             'silenceremove=start_periods=1:start_threshold=-45dB:start_silence=0.1,areverse,silenceremove=start_periods=1:start_threshold=-45dB:start_silence=0.15,areverse,loudnorm=I=-16:TP=-1.5',
             '-ar', '48000', '-ac', '1', str(clean)], check=True)

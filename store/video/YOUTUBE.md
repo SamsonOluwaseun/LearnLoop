@@ -1,6 +1,6 @@
 # LearnLoop guide video: YouTube upload pack
 
-**File:** `LearnLoop-setup-guide.mp4` (1920 x 1080, 86 seconds, no sound)
+**Files:** `LearnLoop-setup-guide-voice.mp4` (1920 x 1080, 1 min 41 s, narrated by Oluwaseun) and `LearnLoop-setup-guide.mp4` (86 seconds, no sound)
 **Thumbnail:** `youtube-thumbnail.png` (1280 x 720)
 
 The video uses real LearnLoop screens with a synthetic child called Joy. The cartoon is drawn by LearnLoop's own test page, so there is no one else's content in it.
@@ -17,7 +17,15 @@ The video uses real LearnLoop screens with a synthetic child called Joy. The car
 
 LearnLoop is a free, open-source Chrome extension for families. After the YouTube time you choose, it opens a short Maths, English or 11+ reasoning session that follows the national curriculum in England. When the learning is done, your child goes back to the same video at the same point.
 
-In this video:
+In this video (chapter times for the narrated version):
+0:00 What LearnLoop does and how to add it
+0:13 Choose a parent PIN
+0:24 Add your child and choose the times
+0:38 How watching is counted, and the gentle countdown
+0:50 The learning session, with help when it's needed
+1:14 Back to the video, the report and spelling lists
+
+Chapter times for the silent version:
 0:00 What LearnLoop does and how to add it
 0:09 Choose a parent PIN
 0:19 Add your child and choose the times
