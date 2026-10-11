@@ -1,6 +1,6 @@
 # LearnLoop guide video: YouTube upload pack
 
-**Files:** `LearnLoop-setup-guide-voice.mp4` (1920 x 1080, 1 min 41 s, narrated by Oluwaseun) and `LearnLoop-setup-guide.mp4` (86 seconds, no sound)
+**Files:** `LearnLoop-setup-guide-voice.mp4` (1920 x 1080, narrated by Oluwaseun, 1 min 19 s) and `LearnLoop-setup-guide.mp4` (86 seconds, no sound)
 **Thumbnail:** `youtube-thumbnail.png` (1280 x 720)
 
 The video uses real LearnLoop screens with a synthetic child called Joy. The cartoon is drawn by LearnLoop's own test page, so there is no one else's content in it.
@@ -18,12 +18,11 @@ The video uses real LearnLoop screens with a synthetic child called Joy. The car
 LearnLoop is a free, open-source Chrome extension for families. After the YouTube time you choose, it opens a short Maths, English or 11+ reasoning session that follows the national curriculum in England. When the learning is done, your child goes back to the same video at the same point.
 
 In this video (chapter times for the narrated version):
-0:00 What LearnLoop does and how to add it
-0:13 Choose a parent PIN
-0:24 Add your child and choose the times
-0:38 How watching is counted, and the gentle countdown
-0:50 The learning session, with help when it's needed
-1:14 Back to the video, the report and spelling lists
+0:00 What LearnLoop does, adding it and choosing a parent PIN
+0:18 Add your child, choose the times, and how watching is counted
+0:34 The gentle countdown and the learning session
+0:44 Help when it's needed, stars and finishing early
+0:59 Back to the video, the report and spelling lists
 
 Chapter times for the silent version:
 0:00 What LearnLoop does and how to add it
@@ -42,7 +41,9 @@ Made by a parent, for parents. Powered by Samlytics Data Services.
 
 ## Optional voice-over script
 
-The video has no sound. YouTube Studio cannot add your own voice, so the voice goes into the file before upload. Open `voice-recorder.html` (or https://samsonoluwaseun.github.io/LearnLoop/voice-recorder.html), record each line, download the zip, then run `python3 store/video/build-video.py learnloop-voice-over.zip`. That makes `LearnLoop-setup-guide-voice.mp4`, with each scene lengthened to fit its line. Each line matches one scene. YouTube only shows chapters that are at least 10 seconds long, which is why some are grouped.
+The video has no sound. YouTube Studio cannot add your own voice, so the voice goes into the file before upload. Open `voice-recorder.html` (or https://samsonoluwaseun.github.io/LearnLoop/voice-recorder.html), record each line, download the zip, then run `python3 store/video/build-video.py learnloop-voice-over.zip`. That makes `LearnLoop-setup-guide-voice.mp4`, with each scene lengthened to fit its line.
+
+If the voice is one continuous recording, especially one with music under it, don't cut it into lines. Put the second each line starts into a text file and run `python3 store/video/build-video.py recording.mp3 voice-line-starts.txt`. The sound is then kept whole and each picture changes just before its line, so nothing jumps. Each line matches one scene. YouTube only shows chapters that are at least 10 seconds long, which is why some are grouped.
 
 1. (0:00) Meet LearnLoop. Your children watch, then they learn, then they watch again.
 2. (0:05) Add LearnLoop to Chrome. It's free, with no account and no adverts.

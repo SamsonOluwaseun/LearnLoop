@@ -2,7 +2,7 @@
 plus the YouTube thumbnail. Run from the repo root: python3 store/video/build-video.py [voice.zip]
 With the zip from voice-recorder.html, each scene is lengthened to fit its spoken line and the voice is added.
 The narrated version is written as LearnLoop-setup-guide-voice.mp4."""
-import asyncio, pathlib, subprocess, tempfile, shutil, sys, zipfile
+import re, asyncio, pathlib, subprocess, tempfile, shutil, sys, zipfile
 from playwright.async_api import async_playwright
 ROOT = pathlib.Path(__file__).resolve().parents[2]; V = ROOT / 'store' / 'video'; F = V / 'frames'
 FONT = (ROOT / 'extension' / 'fonts').as_uri(); ICON = (ROOT / 'brand' / 'learnloop-icon' / 'learnloop-512.png').as_uri()
@@ -67,8 +67,20 @@ def voice_lines(zpath, tmp):
 
 async def main():
     tmp = pathlib.Path(tempfile.mkdtemp()); clips = []
-    voice = voice_lines(sys.argv[1], tmp) if len(sys.argv) > 1 else {}
-    durs = [max(sc[3], voice[i][1] + LEAD + 0.8) if i in voice else sc[3] for i, sc in enumerate(SCENES)]
+    arg = sys.argv[1] if len(sys.argv) > 1 else ''
+    whole = arg and not arg.endswith('.zip')
+    if whole:
+        # One continuous recording (it may have music under it), so the sound is never cut.
+        # The pictures are fitted to it instead: each scene starts just before its line.
+        # Usage: build-video.py recording.mp3 line-starts.txt  (16 start times in seconds)
+        said = [float(x) for x in open(sys.argv[2]).read().split()]
+        total = float(subprocess.run(['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', arg], capture_output=True, text=True).stdout)
+        edges = [0] + [round(max(0, t - 0.3) * 30) for t in said[1:]] + [round((total + 1.0) * 30)]
+        durs = [(edges[i + 1] - edges[i]) / 30 for i in range(len(SCENES))]
+        voice = {}
+    else:
+        voice = voice_lines(arg, tmp) if arg else {}
+        durs = [max(sc[3], voice[i][1] + LEAD + 0.8) if i in voice else sc[3] for i, sc in enumerate(SCENES)]
     async with async_playwright() as p:
         b = await p.chromium.launch(); pg = await b.new_page(viewport={'width': 1920, 'height': 1080})
         for i, (frame, step, cap, _) in enumerate(SCENES):
@@ -94,8 +106,17 @@ async def main():
         await pg.set_viewport_size({'width': 1280, 'height': 720}); await pg.goto(thumb.as_uri()); await pg.wait_for_timeout(300)
         await pg.screenshot(path=str(V / 'youtube-thumbnail.png')); await b.close()
     lst = tmp / 'list.txt'; lst.write_text(''.join(f"file '{c}'\n" for c in clips))
-    silent = tmp / 'silent.mp4' if voice else V / 'LearnLoop-setup-guide.mp4'
+    silent = tmp / 'silent.mp4' if (voice or whole) else V / 'LearnLoop-setup-guide.mp4'
     subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-f', 'concat', '-safe', '0', '-i', str(lst), '-c', 'copy', '-movflags', '+faststart', str(silent)], check=True)
+    out = V / 'LearnLoop-setup-guide-voice.mp4'
+    if whole:
+        # one gain for the whole recording (no per-line levelling, which made the music pump)
+        peak = float(re.search(r'max_volume: (-?[\d.]+)', subprocess.run(['ffmpeg', '-i', arg, '-af', 'volumedetect', '-f', 'null', '-'], capture_output=True, text=True).stderr).group(1))
+        end = sum(durs)
+        subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', str(silent), '-i', arg, '-filter_complex',
+            f'[1:a]volume={-1 - peak}dB,aresample=48000,apad,atrim=0:{end},afade=t=out:st={end - 1.2}:d=1.2[aout]',
+            '-map', '0:v', '-map', '[aout]', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '160k', '-movflags', '+faststart', str(out)], check=True)
+        print(out, round(end, 1), 'seconds, one continuous recording'); return
     if not voice:
         print(silent, round(sum(durs), 1), 'seconds'); return
     # place each spoken line at the start of its scene, then add the voice track to the video
@@ -104,7 +125,6 @@ async def main():
         inputs += ['-i', str(f)]; ms = int((starts[i] + LEAD) * 1000)
         filters.append(f'[{k + 1}:a]adelay={ms}|{ms}[a{k}]')
     mix = ''.join(f'[a{k}]' for k in range(len(voice))) + f'amix=inputs={len(voice)}:normalize=0,apad[aout]'
-    out = V / 'LearnLoop-setup-guide-voice.mp4'
     subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', str(silent), *inputs, '-filter_complex', ';'.join(filters + [mix]),
         '-map', '0:v', '-map', '[aout]', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '160k', '-shortest', '-movflags', '+faststart', str(out)], check=True)
     print(out, round(sum(durs), 1), 'seconds,', len(voice), 'of', len(SCENES), 'lines voiced')
