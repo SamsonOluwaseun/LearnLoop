@@ -1,6 +1,7 @@
 """Builds the LearnLoop guide video (1920 x 1080, about 80 seconds, no sound) from the frames captured by capture.py,
-plus the YouTube thumbnail. Run from the repo root: python3 store/video/build-video.py [voice.zip]
-With the zip from voice-recorder.html, each scene is lengthened to fit its spoken line and the voice is added.
+plus the YouTube thumbnail. Run from the repo root: python3 store/video/build-video.py [recording.mp3 line-starts.txt]
+With one continuous recording, the sound is kept whole and each scene starts just before its line.
+A zip of separate lines (voice-01 to voice-16) also works: each scene is then lengthened to fit its line.
 The narrated version is written as LearnLoop-setup-guide-voice.mp4."""
 import re, asyncio, pathlib, subprocess, tempfile, shutil, sys, zipfile
 from playwright.async_api import async_playwright

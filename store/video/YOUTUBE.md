@@ -41,9 +41,7 @@ Made by a parent, for parents. Powered by Samlytics Data Services.
 
 ## Optional voice-over script
 
-The video has no sound. YouTube Studio cannot add your own voice, so the voice goes into the file before upload. Open `store/video/voice-recorder.html` in Chrome from your own copy of the repository, record each line, download the zip, then run `python3 store/video/build-video.py learnloop-voice-over.zip`. That makes `LearnLoop-setup-guide-voice.mp4`, with each scene lengthened to fit its line.
-
-If the voice is one continuous recording, especially one with music under it, don't cut it into lines. Put the second each line starts into a text file and run `python3 store/video/build-video.py recording.mp3 voice-line-starts.txt`. The sound is then kept whole and each picture changes just before its line, so nothing jumps. Each line matches one scene. YouTube only shows chapters that are at least 10 seconds long, which is why some are grouped.
+YouTube Studio cannot add your own voice, so the voice goes into the file before upload. Record the script below as one continuous recording (music underneath is fine). Put the second each line starts into a text file, as in `voice-line-starts.txt`, then run `python3 store/video/build-video.py recording.mp3 voice-line-starts.txt`. That makes `LearnLoop-setup-guide-voice.mp4`. The sound is kept whole and each picture changes just before its line, so nothing jumps. Each line matches one scene. YouTube only shows chapters that are at least 10 seconds long, which is why some are grouped.
 
 1. (0:00) Meet LearnLoop. Your children watch, then they learn, then they watch again.
 2. (0:05) Add LearnLoop to Chrome. It's free, with no account and no adverts.
