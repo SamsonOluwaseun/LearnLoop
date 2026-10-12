@@ -93,12 +93,12 @@ function render() {
 
 // Plain-English help for each reason the microphone can fail
 const HELP = {
-  frame: 'This page is open inside a preview, which cannot use the microphone. Open it in a normal Chrome tab: https://samsonoluwaseun.github.io/LearnLoop/voice-recorder.html',
-  insecure: 'The microphone only works on a secure page. Open https://samsonoluwaseun.github.io/LearnLoop/voice-recorder.html in Chrome.',
+  frame: 'This page is open inside a preview, which cannot use the microphone. Open the file in a normal Chrome tab.',
+  insecure: 'The microphone only works on a secure page. Open the file directly in Chrome.',
   NotAllowedError: 'The microphone is blocked. 1) Click the icon just left of the web address, choose Site settings, and set Microphone to Allow. 2) In Windows, open Settings > Privacy & security > Microphone, and turn on "Microphone access", "Let apps access your microphone" and "Let desktop apps access your microphone". Then reload this page and press Turn on microphone again.',
   NotFoundError: 'No microphone was found. Plug in a headset or check the laptop microphone is switched on in Windows Settings > System > Sound > Input.',
   NotReadableError: 'Another app is using the microphone (for example Teams, Zoom or a recorder). Close it, then press Turn on microphone again.',
-  other: 'Chrome could not start the microphone. Reload the page and try again. If it still fails, try the online link: https://samsonoluwaseun.github.io/LearnLoop/voice-recorder.html'
+  other: 'Chrome could not start the microphone. Reload the page and try again.'
 };
 function showHelp(key, detail) {
   $('micstate').className = 'status warn'; $('micstate').textContent = 'Microphone not working';
